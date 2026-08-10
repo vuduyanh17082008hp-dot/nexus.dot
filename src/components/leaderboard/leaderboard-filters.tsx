@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils/cn";
 const PERIODS = ["today", "week", "all"] as const;
 const GAMES = [
   { slug: "", label: "All Games" },
+  { slug: "boot-sequence", label: "Boot Sequence" },
   { slug: "neon-survivor", label: "Neon Survivor" },
   { slug: "void-runner", label: "Void Runner" },
   { slug: "cyber-breakout", label: "Cyber Breakout" },
