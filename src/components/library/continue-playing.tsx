@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { GAME_CATALOG } from "@/lib/game/catalog";
-import { getRecentGames } from "@/lib/demo/local-storage";
+import { getRecentGames, type RecentEntry } from "@/lib/demo/local-storage";
 import { SectionHeading } from "@/components/layout/page-shell";
 
 export function ContinuePlaying() {
-  const [recent] = useState(() => getRecentGames());
+  const [recent, setRecent] = useState<RecentEntry[]>([]);
+  const [ready, setReady] = useState(false);
 
-  if (recent.length === 0) return null;
+  useEffect(() => {
+    setRecent(getRecentGames());
+    setReady(true);
+  }, []);
+
+  // Avoid SSR/client mismatch from localStorage.
+  if (!ready || recent.length === 0) return null;
 
   return (
     <section>

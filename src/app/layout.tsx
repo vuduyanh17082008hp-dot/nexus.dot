@@ -62,9 +62,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${orbitron.variable} ${exo2.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground font-body bg-grid noise-overlay">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-background text-foreground font-body bg-grid noise-overlay"
+      >
         <Providers>
           <AppShell>{children}</AppShell>
           <PwaRegister />

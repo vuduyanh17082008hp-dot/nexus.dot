@@ -11,15 +11,19 @@ import { GameCard } from "@/components/game/game-card";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function DashboardClient() {
   const { profile, loading, configured } = useUser();
   const { favorites } = useFavorites();
-  const [recentSlugs] = useState(() => getRecentGames().map((r) => r.slug));
+  const [recentSlugs, setRecentSlugs] = useState<string[]>([]);
 
-  const xp = profile?.xp ?? 1240;
-  const level = profile?.level ?? 5;
+  useEffect(() => {
+    setRecentSlugs(getRecentGames().map((r) => r.slug));
+  }, []);
+
+  const xp = profile?.xp ?? 0;
+  const level = profile?.level ?? 1;
   const name = profile?.display_name ?? profile?.username ?? "Player";
 
   const favFromCatalog = favorites.length

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -33,12 +33,17 @@ interface SiteHeaderProps {
 export function SiteHeader({ onSearchOpen }: SiteHeaderProps) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, profile, loading } = useUser();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isPlayRoute = pathname.startsWith("/play/");
   if (isPlayRoute) return null;
 
-  const profileHref = user ? "/dashboard" : "/auth/login";
+  const profileHref = mounted && user ? "/dashboard" : "/auth/login";
 
   return (
     <header className="sticky top-0 z-50 glass-strong border-b border-border">
@@ -97,8 +102,12 @@ export function SiteHeader({ onSearchOpen }: SiteHeaderProps) {
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
             </Button>
 
-            <Link href={profileHref} className="hidden sm:block" aria-label={user ? "Go to profile" : "Sign in"}>
-              {!loading && (
+            <Link
+              href={profileHref}
+              className="hidden sm:block"
+              aria-label={mounted && user ? "Go to profile" : "Sign in"}
+            >
+              {mounted && !loading && (
                 <Avatar
                   src={profile?.avatar_url}
                   alt={profile?.display_name ?? profile?.username ?? "Profile"}

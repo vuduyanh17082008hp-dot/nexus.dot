@@ -64,7 +64,7 @@ export function GamePlayer({ game }: GamePlayerProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [favorited, setFavorited] = useState(() => isLocalFavorite(game.slug));
+  const [favorited, setFavorited] = useState(false);
   const [preset, setPreset] = useState<PerformancePreset>("medium");
   const [hud, setHud] = useState<GameHudStats>({ score: 0 });
   const [gameOver, setGameOver] = useState<GameEndResult | null>(null);
