@@ -61,8 +61,10 @@ export class InputManager {
       }
     };
 
-    target.addEventListener("keydown", onKeyDown as EventListener);
-    target.addEventListener("keyup", onKeyUp as EventListener);
+    // Keyboard always on window — canvas/parent divs are not focusable by default
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+
     if (target !== window) {
       target.addEventListener("pointerdown", onPointerDown);
       target.addEventListener("pointerup", onPointerUp);
@@ -74,14 +76,17 @@ export class InputManager {
     }
 
     this.cleanups.push(() => {
-      target.removeEventListener("keydown", onKeyDown as EventListener);
-      target.removeEventListener("keyup", onKeyUp as EventListener);
-      target.removeEventListener("pointerdown", onPointerDown);
-      target.removeEventListener("pointerup", onPointerUp);
-      target.removeEventListener("pointerleave", onPointerUp);
-      target.removeEventListener("virtual-fire", onVirtualFire as EventListener);
-      window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      if (target !== window) {
+        target.removeEventListener("pointerdown", onPointerDown);
+        target.removeEventListener("pointerup", onPointerUp);
+        target.removeEventListener("pointerleave", onPointerUp);
+        target.removeEventListener("virtual-fire", onVirtualFire as EventListener);
+      } else {
+        window.removeEventListener("pointerdown", onPointerDown);
+        window.removeEventListener("pointerup", onPointerUp);
+      }
     });
   }
 
@@ -98,7 +103,6 @@ export class InputManager {
     this.restartWasDown = this.restartDown;
     this.pauseWasDown = this.pauseDown;
 
-    // Consume buffer on press edge for this frame reporting
     if (primaryPressed) this.bufferTimer = this.bufferSeconds;
 
     return {
