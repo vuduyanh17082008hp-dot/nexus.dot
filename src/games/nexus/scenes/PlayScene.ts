@@ -8,7 +8,7 @@ import { PlayerController } from "../player/PlayerController";
 import { BeatClock } from "../audio/BeatClock";
 import { parseLevelData, type LevelData } from "../world/LevelSchema";
 import { objectToAabb, resolveCollisions, type Aabb } from "../world/CollisionSystem";
-import { SCENE, GAME_SLUG } from "../constants";
+import { SCENE } from "../constants";
 import bootSequenceLevel from "../levels/boot-sequence.json";
 
 type VisualObj = {
