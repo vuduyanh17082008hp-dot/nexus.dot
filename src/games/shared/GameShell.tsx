@@ -1,0 +1,174 @@
+"use client";
+
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import type {
+  GameEndResult,
+  GameHudStats,
+  GraphicsSettings,
+  NexusGameBridge,
+  PerformancePreset,
+} from "@/types/game";
+import { EventBus } from "./event-bus";
+import { cn } from "@/lib/utils/cn";
+
+export interface GameShellProps {
+  gameSlug: string;
+  className?: string;
+  graphicsPreset?: PerformancePreset;
+  onGameOver?: (result: GameEndResult) => void;
+  onHudUpdate?: (stats: GameHudStats) => void;
+  onReady?: () => void;
+  showMobileControls?: boolean;
+}
+
+type BootFn = (
+  parent: HTMLElement,
+  bus: EventBus,
+  options: {
+    onLoadProgress?: (pct: number) => void;
+    graphicsPreset?: PerformancePreset;
+  },
+) => NexusGameBridge;
+
+const BOOT_MAP: Record<string, () => Promise<BootFn>> = {
+  "neon-survivor": () => import("@/games/neon-survivor").then((m) => m.bootNeonSurvivor),
+  "void-runner": () => import("@/games/void-runner").then((m) => m.bootVoidRunner),
+  "cyber-breakout": () => import("@/games/cyber-breakout").then((m) => m.bootCyberBreakout),
+};
+
+export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(function GameShell(
+  { gameSlug, className, graphicsPreset = "medium", onGameOver, onHudUpdate, onReady, showMobileControls },
+  ref,
+) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bridgeRef = useRef<NexusGameBridge | null>(null);
+  const busRef = useRef<EventBus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadPct, setLoadPct] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const initRef = useRef(false);
+
+  useImperativeHandle(ref, () => bridgeRef.current!, []);
+
+  const handleVirtualMove = useCallback((x: number, y: number) => {
+    const el = containerRef.current?.querySelector("[data-virtual-input]") as HTMLElement | null;
+    el?.dispatchEvent(new CustomEvent("virtual-move", { detail: { x, y } }));
+  }, []);
+
+  const handleVirtualFire = useCallback((down: boolean) => {
+    const el = containerRef.current?.querySelector("[data-virtual-input]") as HTMLElement | null;
+    el?.dispatchEvent(new CustomEvent("virtual-fire", { detail: { down } }));
+  }, []);
+
+  useEffect(() => {
+    const parent = containerRef.current;
+    if (!parent || initRef.current) return;
+    initRef.current = true;
+
+    const bus = new EventBus();
+    busRef.current = bus;
+
+    const bootLoader = BOOT_MAP[gameSlug];
+    if (!bootLoader) {
+      setError(`Unknown game: ${gameSlug}`);
+      setLoading(false);
+      return;
+    }
+
+    let destroyed = false;
+
+    bootLoader()
+      .then((bootFn) => {
+        if (destroyed) return;
+        const bridge = bootFn(parent, bus, {
+          onLoadProgress: setLoadPct,
+          graphicsPreset,
+        });
+        bridgeRef.current = bridge;
+
+        bus.on("game:ready", () => {
+          setLoading(false);
+          onReady?.();
+        });
+        bus.on("hud:update", (stats) => onHudUpdate?.(stats));
+        bus.on("game:over", (result) => onGameOver?.(result));
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load game");
+        setLoading(false);
+      });
+
+    return () => {
+      destroyed = true;
+      initRef.current = false;
+      bridgeRef.current?.destroy();
+      bridgeRef.current = null;
+      bus.clear();
+      busRef.current = null;
+    };
+  }, [gameSlug, graphicsPreset, onGameOver, onHudUpdate, onReady]);
+
+  return (
+    <div className={cn("relative aspect-video w-full overflow-hidden rounded-xl bg-black", className)}>
+      <div ref={containerRef} className="h-full w-full" data-virtual-input />
+      {loading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="mb-3 h-1 w-48 overflow-hidden rounded-full bg-violet-950">
+            <div
+              className="h-full bg-cyan-400 transition-all duration-200"
+              style={{ width: `${loadPct}%` }}
+            />
+          </div>
+          <p className="text-sm text-cyan-300/80">Loading {loadPct}%</p>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/90">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
+      {showMobileControls && !loading && !error && (
+        <div className="pointer-events-none absolute inset-0 md:hidden">
+          <div
+            className="pointer-events-auto absolute bottom-6 left-6 h-24 w-24 rounded-full border border-cyan-500/30 bg-cyan-500/10"
+            onTouchStart={(e) => {
+              const t = e.touches[0];
+              const rect = e.currentTarget.getBoundingClientRect();
+              handleVirtualMove(
+                (t.clientX - rect.left - rect.width / 2) / (rect.width / 2),
+                (t.clientY - rect.top - rect.height / 2) / (rect.height / 2),
+              );
+            }}
+            onTouchMove={(e) => {
+              e.preventDefault();
+              const t = e.touches[0];
+              const rect = e.currentTarget.getBoundingClientRect();
+              handleVirtualMove(
+                Math.max(-1, Math.min(1, (t.clientX - rect.left - rect.width / 2) / (rect.width / 2))),
+                Math.max(-1, Math.min(1, (t.clientY - rect.top - rect.height / 2) / (rect.height / 2))),
+              );
+            }}
+            onTouchEnd={() => handleVirtualMove(0, 0)}
+          />
+          <button
+            type="button"
+            className="pointer-events-auto absolute bottom-6 right-6 h-16 w-16 rounded-full border border-violet-400/40 bg-violet-500/20 text-xs text-violet-200"
+            onTouchStart={() => handleVirtualFire(true)}
+            onTouchEnd={() => handleVirtualFire(false)}
+          >
+            FIRE
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
+export type { GraphicsSettings, NexusGameBridge };

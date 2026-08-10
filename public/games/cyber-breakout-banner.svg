@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" fill="none">
+  <defs>
+    <linearGradient id="cb" x1="0" y1="0" x2="0" y2="400">
+      <stop offset="0%" stop-color="#080018"/>
+      <stop offset="100%" stop-color="#140030"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#cb)"/>
+  <text x="80" y="210" fill="#00ffff" font-family="monospace" font-size="64" font-weight="bold">CYBER BREAKOUT</text>
+  <text x="84" y="270" fill="#aa88ff" font-family="monospace" font-size="24">BREAK THE MAINFRAME</text>
+  <g transform="translate(780,80)">
+    <rect width="56" height="18" rx="3" fill="#44ccff"/>
+    <rect x="64" width="56" height="18" rx="3" fill="#ff3366"/>
+    <rect x="128" width="56" height="18" rx="3" fill="#ffaa00"/>
+    <rect x="32" y="26" width="56" height="18" rx="3" fill="#44ccff"/>
+    <rect x="96" y="26" width="56" height="18" rx="3" fill="#ff3366"/>
+  </g>
+  <circle cx="920" cy="300" r="14" fill="#ffffff"/>
+  <rect x="860" y="340" width="120" height="16" rx="5" fill="#00ffff"/>
+</svg>

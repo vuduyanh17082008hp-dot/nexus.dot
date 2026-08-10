@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" fill="none">
+  <defs>
+    <linearGradient id="vr" x1="0" y1="0" x2="1200" y2="0">
+      <stop offset="0%" stop-color="#050010"/>
+      <stop offset="50%" stop-color="#120028"/>
+      <stop offset="100%" stop-color="#050010"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#vr)"/>
+  <rect y="320" width="1200" height="80" fill="#220044"/>
+  <text x="80" y="210" fill="#aa44ff" font-family="monospace" font-size="72" font-weight="bold">VOID RUNNER</text>
+  <text x="84" y="270" fill="#66ccff" font-family="monospace" font-size="24">ENDLESS CYBER SPRINT</text>
+  <rect x="850" y="220" width="64" height="64" rx="10" fill="#00ffff"/>
+  <rect x="980" y="240" width="40" height="80" fill="#ff2266"/>
+  <circle cx="920" cy="180" r="14" fill="#ffdd00"/>
+  <circle cx="1040" cy="160" r="12" fill="#ffdd00"/>
+</svg>
