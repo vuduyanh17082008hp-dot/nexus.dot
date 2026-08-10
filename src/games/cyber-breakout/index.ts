@@ -23,33 +23,6 @@ export function bootCyberBreakout(
   let graphics = getGraphicsPreset(options.graphicsPreset ?? "medium");
   let booted = false;
 
-  const boot = async () => {
-    if (booted) return;
-    booted = true;
-    const Phaser = await import("phaser");
-    game = await createPhaserGame(Phaser, {
-      parent,
-      width: 960,
-      height: 540,
-      scenes: [BootScene, MenuScene, GameScene],
-      backgroundColor: "#080018",
-      preBoot: (g) => {
-        g.registry.set("bus", bus);
-        g.registry.set("ctx", { onLoadProgress: options.onLoadProgress, graphics });
-        g.registry.set("audio", audio);
-        g.registry.set("saveMgr", saveMgr);
-        g.registry.set("achievements", achievements);
-        g.registry.set("graphics", graphics);
-        g.registry.set("levelIndex", 0);
-        g.registry.set("restart", () => bridge.onRestart());
-      },
-    });
-
-    parent.addEventListener("pointerdown", () => void audio.unlock(), { once: true });
-  };
-
-  void boot();
-
   const bridge: NexusGameBridge = {
     onPause: () => {
       game?.scene.pause(SCENE.GAME);
@@ -77,5 +50,31 @@ export function bootCyberBreakout(
     },
   };
 
+  const boot = async () => {
+    if (booted) return;
+    booted = true;
+    const Phaser = await import("phaser");
+    game = await createPhaserGame(Phaser, {
+      parent,
+      width: 960,
+      height: 540,
+      scenes: [BootScene, MenuScene, GameScene],
+      backgroundColor: "#080018",
+      preBoot: (g) => {
+        g.registry.set("bus", bus);
+        g.registry.set("ctx", { onLoadProgress: options.onLoadProgress, graphics });
+        g.registry.set("audio", audio);
+        g.registry.set("saveMgr", saveMgr);
+        g.registry.set("achievements", achievements);
+        g.registry.set("graphics", graphics);
+        g.registry.set("levelIndex", 0);
+        g.registry.set("restart", () => bridge.onRestart());
+      },
+    });
+
+    parent.addEventListener("pointerdown", () => void audio.unlock(), { once: true });
+  };
+
+  void boot();
   return bridge;
 }

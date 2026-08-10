@@ -23,6 +23,32 @@ export function bootVoidRunner(
   let graphics = getGraphicsPreset(options.graphicsPreset ?? "medium");
   let booted = false;
 
+  const bridge: NexusGameBridge = {
+    onPause: () => {
+      game?.scene.pause(SCENE.GAME);
+      bus.emit("game:pause", true);
+    },
+    onResume: () => {
+      game?.scene.resume(SCENE.GAME);
+      bus.emit("game:pause", false);
+    },
+    onRestart: () => {
+      game?.scene.stop(SCENE.GAME);
+      game?.scene.start(SCENE.MENU);
+    },
+    onMute: (m) => audio.setMuted(m),
+    onVolume: (master, music, sfx) => audio.setVolumes(master, music, sfx),
+    onGraphics: (settings) => {
+      graphics = settings;
+      game?.registry.set("graphics", settings);
+    },
+    destroy: () => {
+      destroyPhaserGame(game, parent);
+      game = null;
+      booted = false;
+    },
+  };
+
   const boot = async () => {
     if (booted) return;
     booted = true;
@@ -52,32 +78,5 @@ export function bootVoidRunner(
   };
 
   void boot();
-
-  const bridge: NexusGameBridge = {
-    onPause: () => {
-      game?.scene.pause(SCENE.GAME);
-      bus.emit("game:pause", true);
-    },
-    onResume: () => {
-      game?.scene.resume(SCENE.GAME);
-      bus.emit("game:pause", false);
-    },
-    onRestart: () => {
-      game?.scene.stop(SCENE.GAME);
-      game?.scene.start(SCENE.MENU);
-    },
-    onMute: (m) => audio.setMuted(m),
-    onVolume: (master, music, sfx) => audio.setVolumes(master, music, sfx),
-    onGraphics: (settings) => {
-      graphics = settings;
-      game?.registry.set("graphics", settings);
-    },
-    destroy: () => {
-      destroyPhaserGame(game, parent);
-      game = null;
-      booted = false;
-    },
-  };
-
   return bridge;
 }
