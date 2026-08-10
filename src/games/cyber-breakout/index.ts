@@ -33,16 +33,17 @@ export function bootCyberBreakout(
       height: 540,
       scenes: [BootScene, MenuScene, GameScene],
       backgroundColor: "#080018",
+      preBoot: (g) => {
+        g.registry.set("bus", bus);
+        g.registry.set("ctx", { onLoadProgress: options.onLoadProgress, graphics });
+        g.registry.set("audio", audio);
+        g.registry.set("saveMgr", saveMgr);
+        g.registry.set("achievements", achievements);
+        g.registry.set("graphics", graphics);
+        g.registry.set("levelIndex", 0);
+        g.registry.set("restart", () => bridge.onRestart());
+      },
     });
-
-    game.registry.set("bus", bus);
-    game.registry.set("ctx", { onLoadProgress: options.onLoadProgress, graphics });
-    game.registry.set("audio", audio);
-    game.registry.set("saveMgr", saveMgr);
-    game.registry.set("achievements", achievements);
-    game.registry.set("graphics", graphics);
-    game.registry.set("levelIndex", 0);
-    game.registry.set("restart", () => bridge.onRestart());
 
     parent.addEventListener("pointerdown", () => void audio.unlock(), { once: true });
   };

@@ -19,6 +19,8 @@ export interface CreateGameOptions {
   scenes: Phaser.Types.Scenes.SceneType[];
   physics?: Phaser.Types.Core.PhysicsConfig;
   backgroundColor?: string;
+  /** Runs before any scene starts — use to seed registry (bus, audio, etc.) */
+  preBoot?: (game: Phaser.Game) => void;
 }
 
 export async function createPhaserGame(
@@ -42,6 +44,11 @@ export async function createPhaserGame(
     },
     audio: { disableWebAudio: false },
     banner: false,
+    callbacks: {
+      preBoot: (g) => {
+        options.preBoot?.(g as Phaser.Game);
+      },
+    },
   });
 
   return game;

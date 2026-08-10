@@ -8,13 +8,20 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const ctx = this.registry.get("ctx") as { onLoadProgress?: (n: number) => void };
-    this.load.on("progress", (v: number) => ctx?.onLoadProgress?.(Math.floor(v * 100)));
-    this.load.image("dummy", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+    const ctx = this.registry.get("ctx") as { onLoadProgress?: (n: number) => void } | undefined;
+    ctx?.onLoadProgress?.(30);
+    this.load.on("progress", (v: number) => ctx?.onLoadProgress?.(30 + Math.floor(v * 60)));
   }
 
   create(): void {
+    const ctx = this.registry.get("ctx") as { onLoadProgress?: (n: number) => void } | undefined;
     generateNeonTextures(this);
+    ctx?.onLoadProgress?.(100);
+
+    if (process.env.NODE_ENV === "development") {
+      console.info("[NeonSurvivor] Boot complete → Menu");
+    }
+
     this.scene.start(SCENE.MENU);
   }
 }

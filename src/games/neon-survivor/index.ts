@@ -25,70 +25,7 @@ export function bootNeonSurvivor(
   const achievements = new AchievementManager(GAME_SLUG, bus);
   let graphics = getGraphicsPreset(options.graphicsPreset ?? "medium");
 
-  const boot = async () => {
-    if (booting || game || cancelled) return;
-    booting = true;
-
-    try {
-      const PhaserMod = await import("phaser");
-      if (cancelled) return;
-
-      const ctx = {
-        bus,
-        gameSlug: GAME_SLUG,
-        width: 960,
-        height: 540,
-        graphics,
-        onLoadProgress: options.onLoadProgress,
-      };
-
-      const instance = await createPhaserGame(PhaserMod, {
-        parent,
-        width: 960,
-        height: 540,
-        scenes: [BootScene, MenuScene, GameScene, UIScene],
-        backgroundColor: "#0a0014",
-      });
-
-      if (cancelled) {
-        destroyPhaserGame(instance, parent);
-        return;
-      }
-
-      game = instance;
-      game.registry.set("bus", bus);
-      game.registry.set("ctx", ctx);
-      game.registry.set("audio", audio);
-      game.registry.set("saveMgr", saveMgr);
-      game.registry.set("achievements", achievements);
-      game.registry.set("graphics", graphics);
-      game.registry.set("restart", () => bridge.onRestart());
-
-      parent.addEventListener(
-        "pointerdown",
-        () => {
-          void audio.unlock();
-          bus.emit("audio:unlock", undefined);
-        },
-        { once: true },
-      );
-
-      if (process.env.NODE_ENV === "development") {
-        console.info("[NeonSurvivor] Phaser game mounted");
-      }
-    } catch (err) {
-      console.error("[NeonSurvivor] Failed to boot", err);
-      bus.emit("nexus:error", {
-        message: err instanceof Error ? err.message : "Failed to start Neon Survivor",
-      });
-      throw err;
-    } finally {
-      booting = false;
-    }
-  };
-
-  void boot();
-
+  // Declared early so preBoot can wire restart → bridge
   const bridge: NexusGameBridge = {
     onPause: () => {
       if (!game || cancelled) return;
@@ -125,6 +62,73 @@ export function bootNeonSurvivor(
       booting = false;
     },
   };
+
+  const boot = async () => {
+    if (booting || game || cancelled) return;
+    booting = true;
+
+    try {
+      const PhaserMod = await import("phaser");
+      if (cancelled) return;
+
+      const ctx = {
+        bus,
+        gameSlug: GAME_SLUG,
+        width: 960,
+        height: 540,
+        graphics,
+        onLoadProgress: options.onLoadProgress,
+      };
+
+      const instance = await createPhaserGame(PhaserMod, {
+        parent,
+        width: 960,
+        height: 540,
+        scenes: [BootScene, MenuScene, GameScene, UIScene],
+        backgroundColor: "#0a0014",
+        // CRITICAL: registry must exist before Boot/Menu create runs
+        preBoot: (g) => {
+          g.registry.set("bus", bus);
+          g.registry.set("ctx", ctx);
+          g.registry.set("audio", audio);
+          g.registry.set("saveMgr", saveMgr);
+          g.registry.set("achievements", achievements);
+          g.registry.set("graphics", graphics);
+          g.registry.set("restart", () => bridge.onRestart());
+        },
+      });
+
+      if (cancelled) {
+        destroyPhaserGame(instance, parent);
+        return;
+      }
+
+      game = instance;
+
+      parent.addEventListener(
+        "pointerdown",
+        () => {
+          void audio.unlock();
+          bus.emit("audio:unlock", undefined);
+        },
+        { once: true },
+      );
+
+      if (process.env.NODE_ENV === "development") {
+        console.info("[NeonSurvivor] Phaser game mounted");
+      }
+    } catch (err) {
+      console.error("[NeonSurvivor] Failed to boot", err);
+      bus.emit("nexus:error", {
+        message: err instanceof Error ? err.message : "Failed to start Neon Survivor",
+      });
+      throw err;
+    } finally {
+      booting = false;
+    }
+  };
+
+  void boot();
 
   return bridge;
 }

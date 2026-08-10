@@ -3,9 +3,8 @@ import type { EventBus } from "@/games/shared/event-bus";
 import { SCENE } from "./constants";
 
 /**
- * READY screen. Starts NeonGame and lets GameScene own UI launch.
- * Important: do NOT call scene.launch() after scene.start() — start() shuts
- * this scene down and queued launches from here are unreliable.
+ * READY screen. Starts NeonGame; GameScene launches UI.
+ * Do NOT call scene.launch() after scene.start() from this scene.
  */
 export class MenuScene extends Phaser.Scene {
   private started = false;
@@ -16,7 +15,7 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    const bus = this.registry.get("bus") as EventBus;
+    const bus = this.registry.get("bus") as EventBus | undefined;
     this.started = false;
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0a0014);
@@ -55,7 +54,7 @@ export class MenuScene extends Phaser.Scene {
 
     const begin = () => this.beginGame(bus);
 
-    // Anywhere on the canvas starts the game (not only the label)
+    // Anywhere on the canvas starts the game
     this.input.once("pointerdown", begin);
     startBtn.once("pointerdown", begin);
 
@@ -66,20 +65,28 @@ export class MenuScene extends Phaser.Scene {
       console.info("[NeonSurvivor] READY");
     }
 
-    bus.emit("game:ready", undefined);
+    // Always clear React loading overlay — even if bus was missing earlier
+    try {
+      bus?.emit("game:ready", undefined);
+    } catch (err) {
+      console.error("[NeonSurvivor] game:ready emit failed", err);
+    }
   }
 
-  private beginGame(bus: EventBus): void {
+  private beginGame(bus: EventBus | undefined): void {
     if (this.started) return;
     this.started = true;
 
-    bus.emit("audio:unlock", undefined);
+    try {
+      bus?.emit("audio:unlock", undefined);
+    } catch {
+      /* ignore */
+    }
 
     if (process.env.NODE_ENV === "development") {
       console.info("[NeonSurvivor] START → PLAYING");
     }
 
-    // Only start GAME here. GameScene.create() launches UI.
     this.scene.start(SCENE.GAME);
   }
 }
