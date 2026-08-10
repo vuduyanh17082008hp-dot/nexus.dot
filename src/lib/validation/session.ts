@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-const GAME_SLUGS = ["neon-survivor", "void-runner", "cyber-breakout"] as const;
+const GAME_SLUGS = [
+  "boot-sequence",
+  "neon-survivor",
+  "void-runner",
+  "cyber-breakout",
+] as const;
 
 export const sessionStartSchema = z.object({
   gameSlug: z.enum(GAME_SLUGS),

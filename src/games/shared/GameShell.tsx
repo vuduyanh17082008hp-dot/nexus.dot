@@ -41,6 +41,7 @@ type BootFn = (
 ) => NexusGameBridge;
 
 const BOOT_MAP: Record<string, () => Promise<BootFn>> = {
+  "boot-sequence": () => import("@/games/nexus").then((m) => m.bootNexusRhythm),
   "neon-survivor": () => import("@/games/neon-survivor").then((m) => m.bootNeonSurvivor),
   "void-runner": () => import("@/games/void-runner").then((m) => m.bootVoidRunner),
   "cyber-breakout": () => import("@/games/cyber-breakout").then((m) => m.bootCyberBreakout),

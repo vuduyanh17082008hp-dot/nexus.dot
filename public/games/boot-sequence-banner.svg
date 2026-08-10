@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f0a1e"/>
+      <stop offset="100%" stop-color="#050510"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="480" fill="url(#g)"/>
+  <g opacity="0.35">
+    <circle cx="200" cy="120" r="120" fill="#7c3aed"/>
+    <circle cx="980" cy="360" r="160" fill="#22d3ee"/>
+  </g>
+  <rect x="0" y="400" width="1280" height="80" fill="#1e1b4b"/>
+  <rect x="0" y="400" width="1280" height="6" fill="#7c3aed"/>
+  <rect x="180" y="340" width="36" height="36" rx="8" fill="#22d3ee"/>
+  <text x="80" y="120" fill="#ffffff" font-family="monospace" font-size="64" font-weight="700">BOOT SEQUENCE</text>
+  <text x="80" y="170" fill="#94a3b8" font-family="monospace" font-size="22">Official NEXUS rhythm platformer · Phase 1</text>
+</svg>

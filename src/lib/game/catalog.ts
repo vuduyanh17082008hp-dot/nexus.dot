@@ -2,6 +2,22 @@ import type { Game, GameGenre } from "@/types/database";
 
 export const GAME_CATALOG: Game[] = [
   {
+    id: "00000000-0000-4000-8000-000000000004",
+    slug: "boot-sequence",
+    title: "Boot Sequence",
+    description:
+      "Precision rhythm platforming. Control the NEXUS CORE through energy spikes, pads, and a gravity fracture — the world moves with the pulse.",
+    short_description: "Official NEXUS rhythm-run tutorial level.",
+    genre: "arcade",
+    thumbnail_url: "/games/boot-sequence.svg",
+    banner_url: "/games/boot-sequence-banner.svg",
+    status: "published",
+    is_featured: true,
+    play_count: 2400,
+    rating: 4.9,
+    created_at: "2026-08-10T00:00:00.000Z",
+  },
+  {
     id: "00000000-0000-4000-8000-000000000001",
     slug: "neon-survivor",
     title: "Neon Survivor",
@@ -12,7 +28,7 @@ export const GAME_CATALOG: Game[] = [
     thumbnail_url: "/games/neon-survivor.svg",
     banner_url: "/games/neon-survivor-banner.svg",
     status: "published",
-    is_featured: true,
+    is_featured: false,
     play_count: 12840,
     rating: 4.8,
     created_at: "2026-01-10T00:00:00.000Z",

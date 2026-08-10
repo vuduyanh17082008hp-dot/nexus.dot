@@ -46,7 +46,7 @@ export default function HomePage() {
             Instant-play arcade experiences. Climb leaderboards, unlock achievements, and level up your profile.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <Button href="/play/neon-survivor" size="lg">
+            <Button href="/play/boot-sequence" size="lg">
               <Play className="h-5 w-5" /> Play Now
             </Button>
             <Button href="/games" variant="secondary" size="lg">
@@ -108,7 +108,7 @@ export default function HomePage() {
               { icon: Zap, title: "Instant Play", desc: "No downloads. Launch games in your browser." },
               { icon: Trophy, title: "Leaderboards", desc: "Compete daily, weekly, and all-time." },
               { icon: Shield, title: "Achievements", desc: "Earn XP and unlock badges across games." },
-              { icon: Play, title: "3 Games Live", desc: "Neon Survivor, Void Runner, Cyber Breakout." },
+              { icon: Play, title: "4 Games Live", desc: "Boot Sequence plus three arcade classics." },
             ].map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
@@ -125,11 +125,11 @@ export default function HomePage() {
         <section className="rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-950/40 to-cyan-950/20 p-8 text-center md:p-12">
           <h2 className="text-2xl font-bold text-white md:text-3xl">Ready to ascend?</h2>
           <p className="mx-auto mt-3 max-w-lg text-zinc-400">
-            Jump into Neon Survivor or explore the full library. Your next high score is one click away.
+            Jump into Boot Sequence or explore the full library. Your next perfect run is one click away.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-4">
-            <Button href="/play/neon-survivor" size="lg">
-              Play Neon Survivor
+            <Button href="/play/boot-sequence" size="lg">
+              Play Boot Sequence
             </Button>
             <Button href="/leaderboard" variant="secondary" size="lg">
               View Leaderboard

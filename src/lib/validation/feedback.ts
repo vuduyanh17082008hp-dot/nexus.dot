@@ -15,7 +15,10 @@ export const feedbackSchema = z.object({
   severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   title: z.string().trim().min(3).max(160),
   description: z.string().trim().min(10).max(8000),
-  gameSlug: z.enum(["neon-survivor", "void-runner", "cyber-breakout"]).optional().nullable(),
+  gameSlug: z
+    .enum(["boot-sequence", "neon-survivor", "void-runner", "cyber-breakout"])
+    .optional()
+    .nullable(),
   sessionId: z.string().uuid().optional().nullable(),
   contactPermission: z.boolean().default(false),
   route: z.string().max(300).optional(),
@@ -33,7 +36,10 @@ export const errorReportSchema = z.object({
   message: z.string().min(1).max(2000),
   stack: z.string().max(8000).optional().nullable(),
   route: z.string().max(300).optional().nullable(),
-  gameSlug: z.enum(["neon-survivor", "void-runner", "cyber-breakout"]).optional().nullable(),
+  gameSlug: z
+    .enum(["boot-sequence", "neon-survivor", "void-runner", "cyber-breakout"])
+    .optional()
+    .nullable(),
   sessionId: z.string().uuid().optional().nullable(),
   gameVersion: z.string().max(40).optional().nullable(),
   severity: z.enum(["low", "medium", "high", "critical"]).optional(),

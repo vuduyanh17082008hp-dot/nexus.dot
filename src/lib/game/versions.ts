@@ -1,4 +1,5 @@
 export const GAME_VERSIONS: Record<string, string> = {
+  "boot-sequence": "1.0.0",
   "neon-survivor": "1.0.0",
   "void-runner": "1.0.0",
   "cyber-breakout": "1.0.0",

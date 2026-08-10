@@ -1,11 +1,17 @@
 import { z } from "zod";
 
-const GAME_SLUGS = ["neon-survivor", "void-runner", "cyber-breakout"] as const;
+const GAME_SLUGS = [
+  "boot-sequence",
+  "neon-survivor",
+  "void-runner",
+  "cyber-breakout",
+] as const;
 
 export const SCORE_BOUNDS: Record<
   (typeof GAME_SLUGS)[number],
   { min: number; max: number; maxDurationSeconds: number }
 > = {
+  "boot-sequence": { min: 0, max: 50_000, maxDurationSeconds: 1_800 },
   "neon-survivor": { min: 0, max: 500_000, maxDurationSeconds: 7_200 },
   "void-runner": { min: 0, max: 250_000, maxDurationSeconds: 3_600 },
   "cyber-breakout": { min: 0, max: 100_000, maxDurationSeconds: 7_200 },

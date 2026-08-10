@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" fill="none">
+  <rect width="640" height="360" fill="#050510"/>
+  <rect x="0" y="300" width="640" height="60" fill="#1e1b4b"/>
+  <rect x="0" y="300" width="640" height="4" fill="#7c3aed"/>
+  <rect x="80" y="250" width="28" height="28" rx="6" fill="#22d3ee"/>
+  <circle cx="94" cy="264" r="6" fill="#7c3aed"/>
+  <polygon points="200,300 218,260 236,300" fill="#f97316"/>
+  <polygon points="260,300 278,260 296,300" fill="#f97316"/>
+  <rect x="360" y="280" width="48" height="16" rx="4" fill="#22d3ee"/>
+  <rect x="480" y="180" width="40" height="80" rx="12" fill="#a78bfa" fill-opacity="0.4" stroke="#22d3ee" stroke-width="3"/>
+  <text x="32" y="48" fill="#e2e8f0" font-family="monospace" font-size="28" font-weight="700">BOOT SEQUENCE</text>
+  <text x="32" y="76" fill="#22d3ee" font-family="monospace" font-size="14">NEXUS CORE · EASY</text>
+</svg>

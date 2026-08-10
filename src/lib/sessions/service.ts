@@ -154,7 +154,11 @@ export async function completeGameSession(
   const game = session.games as { id: string; slug: string; version: string } | null;
   if (!game) return { error: "Game not found for session", status: 404 as const };
 
-  const slug = game.slug as "neon-survivor" | "void-runner" | "cyber-breakout";
+  const slug = game.slug as
+    | "boot-sequence"
+    | "neon-survivor"
+    | "void-runner"
+    | "cyber-breakout";
   const validation = validateScoreSubmission({
     gameSlug: slug,
     score: input.score,

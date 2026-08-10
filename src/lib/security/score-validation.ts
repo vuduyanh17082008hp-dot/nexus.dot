@@ -6,7 +6,7 @@ export type ScoreValidationResult =
   | { ok: false; reason: string };
 
 export function validateScoreSubmission(input: {
-  gameSlug: "neon-survivor" | "void-runner" | "cyber-breakout";
+  gameSlug: "boot-sequence" | "neon-survivor" | "void-runner" | "cyber-breakout";
   score: number;
   durationSeconds: number;
   startedAt: string;
@@ -28,6 +28,7 @@ export function validateScoreSubmission(input: {
   // Plausible score-per-second ceilings (soft flags)
   const rate = input.durationSeconds > 0 ? input.score / input.durationSeconds : input.score;
   const softCeilings: Record<string, number> = {
+    "boot-sequence": 120,
     "neon-survivor": 900,
     "void-runner": 400,
     "cyber-breakout": 250,
