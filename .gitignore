@@ -18,3 +18,5 @@ coverage
 *.tsbuildinfo
 next-env.d.ts
 .vscode/*.log
+.vercel
+.env*
