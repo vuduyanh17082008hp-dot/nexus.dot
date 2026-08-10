@@ -255,6 +255,13 @@ export function GamePlayer({ game }: GamePlayerProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Never let Space scroll the play page; game InputManager owns PRIMARY
+      if (e.code === "Space" || e.key === " ") {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") {
+          e.preventDefault();
+        }
+      }
       if (e.key === "Escape" && paused) togglePause();
       if (e.key === "p" || e.key === "P") togglePause();
     };

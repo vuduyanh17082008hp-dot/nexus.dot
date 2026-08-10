@@ -17,6 +17,17 @@ export class CubeForm extends BasePlayerForm {
     this.jumpHeld = false;
   }
 
+  tryGroundJump(body: PlayerBody, ctx: FormContext): boolean {
+    const canJump = ctx.grounded || ctx.coyoteTimer > 0;
+    if (!canJump || !body.alive) return false;
+    body.vy = VOID_CONFIG.cube.jumpVelocity * ctx.gravitySign;
+    body.onGround = false;
+    ctx.grounded = false;
+    ctx.coyoteTimer = 0;
+    this.jumpHeld = true;
+    return true;
+  }
+
   update(body: PlayerBody, ctx: FormContext, input: InputFrame, dt: number): void {
     const cfg = VOID_CONFIG.cube;
     body.vx = cfg.runSpeed * ctx.speedMult;
@@ -25,12 +36,7 @@ export class CubeForm extends BasePlayerForm {
     const canJump = ctx.grounded || ctx.coyoteTimer > 0;
     const wantJump = input.primaryPressed || (input.bufferedPrimary && canJump);
 
-    if (wantJump && canJump && body.alive) {
-      body.vy = cfg.jumpVelocity * ctx.gravitySign;
-      body.onGround = false;
-      ctx.coyoteTimer = 0;
-      this.jumpHeld = true;
-    }
+    if (wantJump) this.tryGroundJump(body, ctx);
 
     if (input.primaryReleased) this.jumpHeld = false;
 

@@ -21,14 +21,21 @@ export class InputManager {
   private disposed = false;
   private readonly cleanups: Array<() => void> = [];
 
-  constructor(bufferMs = NEXUS_CONFIG.inputBufferMs) {
+  constructor(bufferMs: number = NEXUS_CONFIG.inputBufferMs) {
     this.bufferSeconds = bufferMs / 1000;
   }
 
   attach(target: HTMLElement | Window = window): void {
+    const isPrimaryKey = (e: KeyboardEvent) =>
+      e.code === "Space" ||
+      e.key === " " ||
+      e.code === "KeyW" ||
+      e.code === "ArrowUp";
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      if (e.code === "Space" || e.code === "KeyW" || e.code === "ArrowUp") {
+      if (isPrimaryKey(e)) {
+        // Stop page scroll / button activation while the game is listening
         e.preventDefault();
         this.primaryDown = true;
         this.bufferTimer = this.bufferSeconds;
@@ -37,7 +44,7 @@ export class InputManager {
       if (e.code === "Escape" || e.code === "KeyP") this.pauseDown = true;
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "KeyW" || e.code === "ArrowUp") {
+      if (isPrimaryKey(e)) {
         this.primaryDown = false;
       }
       if (e.code === "KeyR") this.restartDown = false;

@@ -90,23 +90,25 @@ export function resolveCollisions(
       body.x += Math.sign(dx || 1) * px;
       body.vx = Math.max(body.vx, 0);
     } else if (gravitySign === 1) {
+      // Y-down: smaller y is above. dy < 0 means player center is above the solid → top landing.
       if (dy < 0) {
         body.y -= py;
-        if (body.vy < 0) body.vy = 0;
-      } else {
-        body.y += py;
         if (body.vy > 0) body.vy = 0;
         result.grounded = true;
         result.groundY = s.y - s.h / 2 - body.height / 2;
+      } else {
+        body.y += py;
+        if (body.vy < 0) body.vy = 0;
       }
     } else if (dy > 0) {
+      // Reverse gravity: "floor" is the underside of solids (larger y).
       body.y += py;
-      if (body.vy > 0) body.vy = 0;
-    } else {
-      body.y -= py;
       if (body.vy < 0) body.vy = 0;
       result.grounded = true;
       result.groundY = s.y + s.h / 2 + body.height / 2;
+    } else {
+      body.y -= py;
+      if (body.vy > 0) body.vy = 0;
     }
   }
 

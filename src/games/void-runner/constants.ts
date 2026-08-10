@@ -34,8 +34,8 @@ export const VOID_CONFIG = {
   height: 540,
   simHz: 120,
   maxFrameDt: 0.05,
-  inputBufferMs: 70,
-  coyoteMs: 55,
+  inputBufferMs: 120,
+  coyoteMs: 70,
   countdownSeconds: 1.2,
   deathRestartSeconds: 0.7,
   camera: {

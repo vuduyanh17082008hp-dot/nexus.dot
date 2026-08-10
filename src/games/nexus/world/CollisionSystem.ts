@@ -87,30 +87,26 @@ export function resolveCollisions(
     if (px < py) {
       body.x += Math.sign(dx || 1) * px;
       body.vx = Math.max(body.vx, 0);
-    } else {
-      // Vertical resolution relative to gravity
-      if (gravitySign === 1) {
-        if (dy < 0) {
-          // hit ceiling
-          body.y -= py;
-          if (body.vy < 0) body.vy = 0;
-        } else {
-          body.y += py;
-          if (body.vy > 0) body.vy = 0;
-          result.grounded = true;
-          result.groundY = s.y - s.h / 2 - body.height / 2;
-        }
+    } else if (gravitySign === 1) {
+      // Y-down: dy < 0 => player is above solid center => landed on top
+      if (dy < 0) {
+        body.y -= py;
+        if (body.vy > 0) body.vy = 0;
+        result.grounded = true;
+        result.groundY = s.y - s.h / 2 - body.height / 2;
       } else {
-        if (dy > 0) {
-          body.y += py;
-          if (body.vy > 0) body.vy = 0;
-        } else {
-          body.y -= py;
-          if (body.vy < 0) body.vy = 0;
-          result.grounded = true;
-          result.groundY = s.y + s.h / 2 + body.height / 2;
-        }
+        body.y += py;
+        if (body.vy < 0) body.vy = 0;
       }
+    } else if (dy > 0) {
+      // Reverse gravity: underside is the floor
+      body.y += py;
+      if (body.vy < 0) body.vy = 0;
+      result.grounded = true;
+      result.groundY = s.y + s.h / 2 + body.height / 2;
+    } else {
+      body.y -= py;
+      if (body.vy > 0) body.vy = 0;
     }
   }
 

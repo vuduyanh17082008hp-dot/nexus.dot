@@ -17,5 +17,9 @@ export abstract class BasePlayerForm {
   reset(body: PlayerBody, ctx: FormContext): void {
     this.enter(body, ctx);
   }
+  /** Ground / coyote jump. Returns true if an impulse was applied. */
+  tryGroundJump(_body: PlayerBody, _ctx: FormContext): boolean {
+    return false;
+  }
   abstract update(body: PlayerBody, ctx: FormContext, input: InputFrame, dt: number): void;
 }

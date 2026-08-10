@@ -12,14 +12,21 @@ export class SpiderForm extends BasePlayerForm {
     body.vx = VOID_CONFIG.spider.runSpeed * ctx.speedMult;
   }
 
+  tryGroundJump(body: PlayerBody, ctx: FormContext): boolean {
+    const canJump = ctx.grounded || ctx.coyoteTimer > 0;
+    if (!canJump || !body.alive) return false;
+    body.vy = VOID_CONFIG.spider.jumpVelocity * ctx.gravitySign;
+    body.onGround = false;
+    ctx.grounded = false;
+    ctx.coyoteTimer = 0;
+    return true;
+  }
+
   update(body: PlayerBody, ctx: FormContext, input: InputFrame, dt: number): void {
     const cfg = VOID_CONFIG.spider;
     body.vx = cfg.runSpeed * ctx.speedMult;
-    const canJump = ctx.grounded || ctx.coyoteTimer > 0;
-    if ((input.primaryPressed || input.bufferedPrimary) && canJump && body.alive) {
-      body.vy = cfg.jumpVelocity * ctx.gravitySign;
-      body.onGround = false;
-      ctx.coyoteTimer = 0;
+    if (input.primaryPressed || input.bufferedPrimary) {
+      this.tryGroundJump(body, ctx);
     }
     body.vy += cfg.gravity * ctx.gravitySign * dt;
     if (ctx.gravitySign === 1) body.vy = Math.min(body.vy, cfg.maxFallSpeed);

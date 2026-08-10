@@ -38,6 +38,8 @@ export class PlayerController {
     grounded: false,
     coyoteTimer: 0,
   };
+  /** True if a ground/coyote jump impulse was applied this sim step. */
+  private jumpUsedThisStep = false;
 
   get formId(): VoidFormId {
     return this.form.id;
@@ -85,12 +87,30 @@ export class PlayerController {
   }
 
   update(input: InputFrame, dt: number): void {
+    this.jumpUsedThisStep = false;
     if (!this.body.alive || this.body.finished) return;
     if (!this.ctx.grounded && this.ctx.coyoteTimer > 0) {
       this.ctx.coyoteTimer = Math.max(0, this.ctx.coyoteTimer - dt);
     }
     this.body.snapshotPrev();
+    const coyoteBefore = this.ctx.coyoteTimer;
     this.form.update(this.body, this.ctx, input, dt);
+    // Forms clear coyote on successful ground jump
+    if (coyoteBefore > 0 && this.ctx.coyoteTimer === 0 && !this.body.onGround) {
+      this.jumpUsedThisStep = true;
+    }
+  }
+
+  /** Post-collision buffered jump (land + PRIMARY same step). */
+  tryGroundJump(): boolean {
+    if (this.jumpUsedThisStep || !this.body.alive || this.body.finished) return false;
+    const ok = this.form.tryGroundJump(this.body, this.ctx);
+    if (ok) this.jumpUsedThisStep = true;
+    return ok;
+  }
+
+  get didJumpThisStep(): boolean {
+    return this.jumpUsedThisStep;
   }
 
   kill(): void {

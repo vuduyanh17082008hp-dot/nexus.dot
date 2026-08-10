@@ -281,6 +281,10 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.state === "COUNTDOWN") {
       this.countdownTimer -= frameDt;
+      // PRIMARY skips countdown and keeps the press buffered for the first jump
+      if (input.primaryPressed || input.bufferedPrimary) {
+        this.countdownTimer = 0;
+      }
       const n = Math.ceil(Math.max(0, this.countdownTimer));
       this.overlayText
         .setText(n > 0 ? String(n) : "RUN")
@@ -290,9 +294,11 @@ export class PlayScene extends Phaser.Scene {
         this.overlayText.setVisible(false);
         this.state = this.practiceMode ? "PRACTICE" : "PLAYING";
         this.beat.reset();
+        // fall through so the same input frame can jump once grounded
+      } else {
+        this.emitHud();
+        return;
       }
-      this.emitHud();
-      return;
     }
 
     if (this.state === "PAUSED") {
@@ -360,6 +366,15 @@ export class PlayScene extends Phaser.Scene {
     if (hit.grounded) {
       this.player.markGrounded(true);
       if (hit.groundY !== undefined) this.player.body.y = hit.groundY;
+    }
+
+    // Honor jump buffer after collision so land+Space (or countdown skip) still jumps
+    if (input.primaryPressed || input.bufferedPrimary) {
+      this.player.tryGroundJump();
+    }
+    if (this.player.didJumpThisStep) {
+      this.inputMgr.consumeBuffer();
+      this.audio.playJump();
     }
 
     if (hit.padBoost && this.player.body.onGround) {
@@ -432,13 +447,6 @@ export class PlayScene extends Phaser.Scene {
 
     if (hit.finish || this.player.body.x >= this.level.settings.finishX) {
       this.complete();
-    }
-
-    if (
-      (input.primaryPressed || input.bufferedPrimary) &&
-      (this.player.body.onGround || this.player.ctx.coyoteTimer > 0)
-    ) {
-      this.inputMgr.consumeBuffer();
     }
   }
 
