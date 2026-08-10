@@ -225,18 +225,32 @@ export function GamePlayer({ game }: GamePlayerProps) {
     setGameOver(null);
     setSessionResult(null);
     setPaused(false);
-    setHud({ score: 0, wave: 1, highScore: getLocalHighScore(game.slug) || undefined });
+    setHud(
+      game.slug === "void-runner"
+        ? { score: 0, progress: 0, best: getLocalHighScore(game.slug) || 0, attempt: 1, form: "CUBE" }
+        : { score: 0, wave: 1, highScore: getLocalHighScore(game.slug) || undefined },
+    );
     startTimeRef.current = Date.now();
   }, [game.slug]);
 
   const handleReady = useCallback(() => {
     bridgeRef.current?.onVolume(volume, volume * 0.85, volume);
-    setHud((prev) => ({
-      ...prev,
-      score: prev.score ?? 0,
-      wave: prev.wave ?? 1,
-      highScore: getLocalHighScore(game.slug) || prev.highScore,
-    }));
+    setHud((prev) =>
+      game.slug === "void-runner"
+        ? {
+            score: prev.score ?? 0,
+            progress: prev.progress ?? 0,
+            best: getLocalHighScore(game.slug) || prev.best || 0,
+            attempt: prev.attempt ?? 1,
+            form: prev.form ?? "CUBE",
+          }
+        : {
+            ...prev,
+            score: prev.score ?? 0,
+            wave: prev.wave ?? 1,
+            highScore: getLocalHighScore(game.slug) || prev.highScore,
+          },
+    );
   }, [volume, game.slug]);
 
   useEffect(() => {
@@ -258,17 +272,38 @@ export function GamePlayer({ game }: GamePlayerProps) {
       level: e.level,
     }));
 
+  const isVoidRunner = game.slug === "void-runner";
+  const isRhythm = isVoidRunner || game.slug === "boot-sequence";
+
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+    <div
+      className={cn(
+        "mx-auto max-w-7xl space-y-6 px-4 py-6",
+        isVoidRunner && "rounded-2xl bg-gradient-to-b from-[#10131F] via-[#080A12] to-[#080A12]",
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link
             href={`/games/${game.slug}`}
-            className="mb-1 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-cyan-300"
+            className={cn(
+              "mb-1 inline-flex items-center gap-1 text-sm hover:text-[#65E8FF]",
+              isVoidRunner ? "text-[#9AA4BC]" : "text-zinc-500 hover:text-cyan-300",
+            )}
           >
             <ArrowLeft className="h-4 w-4" /> Back to details
           </Link>
-          <h1 className="text-2xl font-bold text-white md:text-3xl">{game.title}</h1>
+          <h1
+            className={cn(
+              "text-2xl font-bold md:text-3xl",
+              isVoidRunner ? "font-display tracking-wide text-[#F5F7FF]" : "text-white",
+            )}
+          >
+            {game.title}
+          </h1>
+          {isVoidRunner && (
+            <p className="mt-1 text-sm text-[#9AA4BC]">VOID SIGNAL · One-button auto-run</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="icon" onClick={togglePause} aria-label={paused ? "Resume" : "Pause"}>
@@ -295,6 +330,11 @@ export function GamePlayer({ game }: GamePlayerProps) {
           <Button variant="ghost" size="icon" onClick={toggleFullscreen} aria-label="Fullscreen">
             {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
+          {isVoidRunner && (
+            <Button href="/editor/void-runner" variant="outline" size="sm">
+              Editor
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
             Performance
           </Button>
@@ -302,8 +342,15 @@ export function GamePlayer({ game }: GamePlayerProps) {
       </div>
 
       {showSettings && (
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-violet-500/20 bg-surface-elevated p-4">
-          <label className="text-sm text-zinc-400">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-4 rounded-xl border p-4",
+            isVoidRunner
+              ? "border-[#7C5CFF]/25 bg-[#171B2A]"
+              : "border-violet-500/20 bg-surface-elevated",
+          )}
+        >
+          <label className={cn("text-sm", isVoidRunner ? "text-[#9AA4BC]" : "text-zinc-400")}>
             Master volume
             <input
               type="range"
@@ -312,15 +359,20 @@ export function GamePlayer({ game }: GamePlayerProps) {
               step={0.05}
               value={volume}
               onChange={(e) => handleVolume(Number(e.target.value))}
-              className="ml-2 w-32 accent-cyan-400"
+              className="ml-2 w-32 accent-[#65E8FF]"
             />
           </label>
-          <label className="text-sm text-zinc-400">
+          <label className={cn("text-sm", isVoidRunner ? "text-[#9AA4BC]" : "text-zinc-400")}>
             Quality
             <select
               value={preset}
               onChange={(e) => setPreset(e.target.value as PerformancePreset)}
-              className="ml-2 rounded border border-violet-500/20 bg-surface px-2 py-1 text-sm"
+              className={cn(
+                "ml-2 rounded border px-2 py-1 text-sm",
+                isVoidRunner
+                  ? "border-[#7C5CFF]/25 bg-[#10131F] text-[#F5F7FF]"
+                  : "border-violet-500/20 bg-surface",
+              )}
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -331,11 +383,34 @@ export function GamePlayer({ game }: GamePlayerProps) {
       )}
 
       {showHelp && (
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-zinc-300">
-          <p><strong>WASD / Arrow keys</strong> — Move</p>
-          <p><strong>Mouse / Touch</strong> — Aim &amp; fire (Neon Survivor)</p>
-          <p><strong>Space</strong> — Action / Jump</p>
-          <p><strong>P / Esc</strong> — Pause</p>
+        <div
+          className={cn(
+            "rounded-xl border p-4 text-sm",
+            isVoidRunner
+              ? "border-[#65E8FF]/20 bg-[#65E8FF]/5 text-[#F5F7FF]"
+              : "border-cyan-500/20 bg-cyan-500/5 text-zinc-300",
+          )}
+        >
+          {isRhythm ? (
+            <>
+              <p><strong>Space / W / ↑ / Click / Tap</strong> — Primary (jump / thrust)</p>
+              <p><strong>R</strong> — Fast restart</p>
+              <p><strong>P / Esc</strong> — Pause</p>
+              {isVoidRunner && (
+                <>
+                  <p><strong>C</strong> — Toggle practice mode</p>
+                  <p><strong>Z / X</strong> or <strong>[ / ]</strong> — Prev / next checkpoint (practice)</p>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <p><strong>WASD / Arrow keys</strong> — Move</p>
+              <p><strong>Mouse / Touch</strong> — Aim &amp; fire (Neon Survivor)</p>
+              <p><strong>Space</strong> — Action / Jump</p>
+              <p><strong>P / Esc</strong> — Pause</p>
+            </>
+          )}
         </div>
       )}
 
@@ -352,9 +427,9 @@ export function GamePlayer({ game }: GamePlayerProps) {
           />
 
           {paused && !gameOver && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-black/70 backdrop-blur-sm">
-              <Pause className="mb-4 h-12 w-12 text-violet-400" />
-              <p className="text-lg font-semibold text-white">PAUSED</p>
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-[#080A12]/75 backdrop-blur-sm">
+              <Pause className="mb-4 h-12 w-12 text-[#7C5CFF]" />
+              <p className="text-lg font-semibold text-[#F5F7FF]">PAUSED</p>
               <div className="mt-4 flex flex-wrap justify-center gap-3">
                 <Button onClick={togglePause}>Resume</Button>
                 <Button variant="secondary" onClick={handleRestart}>
@@ -368,18 +443,20 @@ export function GamePlayer({ game }: GamePlayerProps) {
           )}
 
           {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/85 backdrop-blur-md p-4">
+            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[#080A12]/88 backdrop-blur-md p-4">
               <div className="w-full max-w-md space-y-4 text-center">
-                <h2 className="text-2xl font-bold text-white">Game Over</h2>
-                <p className="text-4xl font-mono font-bold text-cyan-300">
+                <h2 className="text-2xl font-bold text-[#F5F7FF]">
+                  {isVoidRunner ? "Signal Locked" : "Game Over"}
+                </h2>
+                <p className="text-4xl font-mono font-bold text-[#65E8FF]">
                   {formatNumber(gameOver.score)}
                 </p>
                 {submitting ? (
-                  <p className="text-sm text-zinc-400">Saving session...</p>
+                  <p className="text-sm text-[#9AA4BC]">Saving session...</p>
                 ) : sessionResult ? (
                   <div className="space-y-2 text-sm">
-                    <p className="text-violet-300">+{sessionResult.xpGained} XP</p>
-                    <p className="text-zinc-500">
+                    <p className="text-[#7C5CFF]">+{sessionResult.xpGained} XP</p>
+                    <p className="text-[#9AA4BC]">
                       High score: {formatNumber(sessionResult.highScore)}
                     </p>
                     {sessionResult.mode === "demo" && (
@@ -408,44 +485,93 @@ export function GamePlayer({ game }: GamePlayerProps) {
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-xl border border-violet-500/15 bg-surface-elevated p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-              Live Stats
+          <div
+            className={cn(
+              "rounded-xl border p-4",
+              isVoidRunner
+                ? "border-[#7C5CFF]/20 bg-[#171B2A]"
+                : "border-violet-500/15 bg-surface-elevated",
+            )}
+          >
+            <h3
+              className={cn(
+                "mb-3 text-sm font-semibold uppercase tracking-wider",
+                isVoidRunner ? "text-[#9AA4BC]" : "text-zinc-500",
+              )}
+            >
+              {isVoidRunner ? "Live Run" : "Live Stats"}
             </h3>
             <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Score</dt>
-                <dd className="font-mono text-cyan-300">{formatNumber(hud.score)}</dd>
-              </div>
-              {hud.highScore !== undefined && (
-                <div className="flex justify-between">
-                  <dt className="text-zinc-500">Best</dt>
-                  <dd className="font-mono text-violet-300">{formatNumber(hud.highScore)}</dd>
-                </div>
-              )}
-              {hud.wave !== undefined && (
-                <div className="flex justify-between">
-                  <dt className="text-zinc-500">Wave</dt>
-                  <dd>{hud.wave}</dd>
-                </div>
-              )}
-              {hud.level !== undefined && (
-                <div className="flex justify-between">
-                  <dt className="text-zinc-500">Level</dt>
-                  <dd>{hud.level}</dd>
-                </div>
+              {isVoidRunner ? (
+                <>
+                  <div className="flex justify-between">
+                    <dt className="text-[#9AA4BC]">Progress</dt>
+                    <dd className="font-mono text-[#65E8FF]">{hud.progress ?? hud.score ?? 0}%</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-[#9AA4BC]">Best</dt>
+                    <dd className="font-mono text-[#7C5CFF]">
+                      {hud.best ?? hud.highScore ?? 0}%
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-[#9AA4BC]">Attempt</dt>
+                    <dd className="font-mono text-[#F5F7FF]">{hud.attempt ?? 1}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-[#9AA4BC]">Form</dt>
+                    <dd className="font-mono text-[#458BFF]">{hud.form ?? "CUBE"}</dd>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-500">Score</dt>
+                    <dd className="font-mono text-cyan-300">{formatNumber(hud.score)}</dd>
+                  </div>
+                  {hud.highScore !== undefined && (
+                    <div className="flex justify-between">
+                      <dt className="text-zinc-500">Best</dt>
+                      <dd className="font-mono text-violet-300">{formatNumber(hud.highScore)}</dd>
+                    </div>
+                  )}
+                  {hud.wave !== undefined && (
+                    <div className="flex justify-between">
+                      <dt className="text-zinc-500">Wave</dt>
+                      <dd>{hud.wave}</dd>
+                    </div>
+                  )}
+                  {hud.level !== undefined && (
+                    <div className="flex justify-between">
+                      <dt className="text-zinc-500">Level</dt>
+                      <dd>{hud.level}</dd>
+                    </div>
+                  )}
+                </>
               )}
             </dl>
           </div>
 
-          <div className="rounded-xl border border-violet-500/15 bg-surface-elevated p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+          <div
+            className={cn(
+              "rounded-xl border p-4",
+              isVoidRunner
+                ? "border-[#7C5CFF]/20 bg-[#171B2A]"
+                : "border-violet-500/15 bg-surface-elevated",
+            )}
+          >
+            <h3
+              className={cn(
+                "mb-3 text-sm font-semibold uppercase tracking-wider",
+                isVoidRunner ? "text-[#9AA4BC]" : "text-zinc-500",
+              )}
+            >
               Leaderboard Preview
             </h3>
             <LeaderboardTable entries={previewEntries} compact />
             <Link
               href={`/leaderboard?gameSlug=${game.slug}`}
-              className="mt-3 block text-center text-xs text-cyan-400 hover:text-cyan-300"
+              className="mt-3 block text-center text-xs text-[#65E8FF] hover:text-[#F5F7FF]"
             >
               View full leaderboard →
             </Link>

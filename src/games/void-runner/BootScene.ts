@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { SCENE } from "./constants";
-import { generateVoidTextures } from "./textures";
+import { ensureVoidTextures } from "./textures";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -8,13 +8,19 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const ctx = this.registry.get("ctx") as { onLoadProgress?: (n: number) => void };
-    this.load.on("progress", (v: number) => ctx?.onLoadProgress?.(Math.floor(v * 100)));
-    this.load.image("dummy", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+    const onLoad = this.registry.get("onLoadProgress") as ((n: number) => void) | undefined;
+    this.load.on("progress", (v: number) => onLoad?.(Math.floor(v * 100)));
+    // Tiny asset so the loader completes reliably
+    this.load.image(
+      "vr-dummy",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    );
   }
 
   create(): void {
-    generateVoidTextures(this);
-    this.scene.start(SCENE.MENU);
+    ensureVoidTextures(this);
+    const onLoad = this.registry.get("onLoadProgress") as ((n: number) => void) | undefined;
+    onLoad?.(100);
+    this.scene.start(SCENE.PLAY);
   }
 }

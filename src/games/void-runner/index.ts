@@ -7,9 +7,8 @@ import { AchievementManager } from "@/games/shared/achievement-manager";
 import { createPhaserGame, destroyPhaserGame } from "@/games/shared/create-game";
 import { getGraphicsPreset } from "@/games/shared/graphics";
 import { BootScene } from "./BootScene";
-import { MenuScene } from "./MenuScene";
-import { GameScene } from "./GameScene";
-import { GAME_SLUG, SCENE } from "./constants";
+import { PlayScene } from "./PlayScene";
+import { GAME_SLUG, SCENE, VOID_PALETTE } from "./constants";
 
 export function bootVoidRunner(
   parent: HTMLElement,
@@ -17,25 +16,19 @@ export function bootVoidRunner(
   options: { onLoadProgress?: (pct: number) => void; graphicsPreset?: PerformancePreset } = {},
 ): NexusGameBridge {
   let game: Phaser.Game | null = null;
+  let cancelled = false;
+  let booting = false;
   const audio = new GameAudio();
   const saveMgr = new SaveManager(GAME_SLUG);
   const achievements = new AchievementManager(GAME_SLUG, bus);
   let graphics = getGraphicsPreset(options.graphicsPreset ?? "medium");
-  let booted = false;
+
+  const getPlay = () => game?.scene.getScene(SCENE.PLAY) as PlayScene | undefined;
 
   const bridge: NexusGameBridge = {
-    onPause: () => {
-      game?.scene.pause(SCENE.GAME);
-      bus.emit("game:pause", true);
-    },
-    onResume: () => {
-      game?.scene.resume(SCENE.GAME);
-      bus.emit("game:pause", false);
-    },
-    onRestart: () => {
-      game?.scene.stop(SCENE.GAME);
-      game?.scene.start(SCENE.MENU);
-    },
+    onPause: () => getPlay()?.requestPause(),
+    onResume: () => getPlay()?.requestResume(),
+    onRestart: () => getPlay()?.requestRestart(),
     onMute: (m) => audio.setMuted(m),
     onVolume: (master, music, sfx) => audio.setVolumes(master, music, sfx),
     onGraphics: (settings) => {
@@ -43,38 +36,72 @@ export function bootVoidRunner(
       game?.registry.set("graphics", settings);
     },
     destroy: () => {
+      cancelled = true;
       destroyPhaserGame(game, parent);
       game = null;
-      booted = false;
+      booting = false;
     },
   };
 
   const boot = async () => {
-    if (booted) return;
-    booted = true;
-    const Phaser = await import("phaser");
-    game = await createPhaserGame(Phaser, {
-      parent,
-      width: 960,
-      height: 540,
-      scenes: [BootScene, MenuScene, GameScene],
-      backgroundColor: "#050010",
-      physics: {
-        default: "arcade",
-        arcade: { gravity: { x: 0, y: 0 }, debug: false },
-      },
-      preBoot: (g) => {
-        g.registry.set("bus", bus);
-        g.registry.set("ctx", { onLoadProgress: options.onLoadProgress, graphics });
-        g.registry.set("audio", audio);
-        g.registry.set("saveMgr", saveMgr);
-        g.registry.set("achievements", achievements);
-        g.registry.set("graphics", graphics);
-        g.registry.set("restart", () => bridge.onRestart());
-      },
-    });
+    if (booting || game || cancelled) return;
+    booting = true;
 
-    parent.addEventListener("pointerdown", () => void audio.unlock(), { once: true });
+    try {
+      const PhaserMod = await import("phaser");
+      if (cancelled) return;
+
+      const instance = await createPhaserGame(PhaserMod, {
+        parent,
+        width: 960,
+        height: 540,
+        scenes: [BootScene, PlayScene],
+        backgroundColor: "#080A12",
+        physics: {
+          default: "arcade",
+          arcade: { gravity: { x: 0, y: 0 }, debug: false },
+        },
+        preBoot: (g) => {
+          g.registry.set("bus", bus);
+          g.registry.set("audio", audio);
+          g.registry.set("saveMgr", saveMgr);
+          g.registry.set("achievements", achievements);
+          g.registry.set("graphics", graphics);
+          g.registry.set("onLoadProgress", options.onLoadProgress);
+          g.registry.set("gameSlug", GAME_SLUG);
+          g.registry.set("restart", () => bridge.onRestart());
+        },
+      });
+
+      if (cancelled) {
+        destroyPhaserGame(instance, parent);
+        return;
+      }
+
+      game = instance;
+      parent.addEventListener(
+        "pointerdown",
+        () => {
+          void audio.unlock();
+          bus.emit("audio:unlock", undefined);
+        },
+        { once: true },
+      );
+
+      if (process.env.NODE_ENV === "development") {
+        console.info("[VoidRunner] Phaser game mounted", {
+          bg: VOID_PALETTE.bg.toString(16),
+        });
+      }
+    } catch (err) {
+      console.error("[VoidRunner] Failed to boot", err);
+      bus.emit("nexus:error", {
+        message: err instanceof Error ? err.message : "Failed to start Void Runner",
+      });
+      throw err;
+    } finally {
+      booting = false;
+    }
   };
 
   void boot();

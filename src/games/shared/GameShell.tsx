@@ -166,6 +166,9 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
         });
         bus.on("hud:update", (stats) => onHudUpdateRef.current?.(stats));
         bus.on("game:over", (result) => onGameOverRef.current?.(result));
+        bus.on("nexus:error", (payload) => {
+          reportError(new Error(payload.message));
+        });
       })
       .catch((err: unknown) => {
         reportError(err instanceof Error ? err : new Error("Failed to load game"));
@@ -185,27 +188,27 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
   }, [gameSlug, graphicsPreset, reportError]);
 
   return (
-    <div className={cn("relative aspect-video w-full overflow-hidden rounded-xl bg-black", className)}>
+    <div className={cn("relative aspect-video w-full overflow-hidden rounded-xl bg-[#080A12]", className)}>
       <div ref={containerRef} className="h-full w-full" data-virtual-input />
       {loading && !error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="mb-3 h-1 w-48 overflow-hidden rounded-full bg-violet-950">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#080A12]/90 backdrop-blur-sm">
+          <div className="mb-3 h-1 w-48 overflow-hidden rounded-full bg-[#171B2A]">
             <div
-              className="h-full bg-cyan-400 transition-all duration-200"
+              className="h-full bg-[#65E8FF] transition-all duration-200"
               style={{ width: `${loadPct}%` }}
             />
           </div>
-          <p className="text-sm text-cyan-300/80">Loading {loadPct}%</p>
+          <p className="text-sm text-[#9AA4BC]">Loading {loadPct}%</p>
         </div>
       )}
       {error && !onError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 p-6 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#080A12]/95 p-6 text-center">
           <AlertTriangle className="h-10 w-10 text-red-400" />
           <div>
-            <p className="font-semibold text-white">Game failed to load</p>
+            <p className="font-semibold text-[#F5F7FF]">Game failed to load</p>
             <p className="mt-1 text-sm text-red-300">{error}</p>
             {errorObj?.stack && (
-              <p className="mt-2 max-h-24 overflow-auto text-xs text-zinc-500">{errorObj.stack.split("\n")[0]}</p>
+              <p className="mt-2 max-h-24 overflow-auto text-xs text-[#9AA4BC]">{errorObj.stack.split("\n")[0]}</p>
             )}
           </div>
           <Button variant="secondary" size="sm" onClick={handleRetry}>
@@ -216,35 +219,48 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
       )}
       {showMobileControls && !loading && !error && (
         <div className="pointer-events-none absolute inset-0 md:hidden">
-          <div
-            className="pointer-events-auto absolute bottom-6 left-6 h-24 w-24 rounded-full border border-cyan-500/30 bg-cyan-500/10"
-            onTouchStart={(e) => {
-              const t = e.touches[0];
-              const rect = e.currentTarget.getBoundingClientRect();
-              handleVirtualMove(
-                (t.clientX - rect.left - rect.width / 2) / (rect.width / 2),
-                (t.clientY - rect.top - rect.height / 2) / (rect.height / 2),
-              );
-            }}
-            onTouchMove={(e) => {
-              e.preventDefault();
-              const t = e.touches[0];
-              const rect = e.currentTarget.getBoundingClientRect();
-              handleVirtualMove(
-                Math.max(-1, Math.min(1, (t.clientX - rect.left - rect.width / 2) / (rect.width / 2))),
-                Math.max(-1, Math.min(1, (t.clientY - rect.top - rect.height / 2) / (rect.height / 2))),
-              );
-            }}
-            onTouchEnd={() => handleVirtualMove(0, 0)}
-          />
-          <button
-            type="button"
-            className="pointer-events-auto absolute bottom-6 right-6 h-16 w-16 rounded-full border border-violet-400/40 bg-violet-500/20 text-xs text-violet-200"
-            onTouchStart={() => handleVirtualFire(true)}
-            onTouchEnd={() => handleVirtualFire(false)}
-          >
-            FIRE
-          </button>
+          {gameSlug === "neon-survivor" ? (
+            <>
+              <div
+                className="pointer-events-auto absolute bottom-6 left-6 h-24 w-24 rounded-full border border-cyan-500/30 bg-cyan-500/10"
+                onTouchStart={(e) => {
+                  const t = e.touches[0];
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  handleVirtualMove(
+                    (t.clientX - rect.left - rect.width / 2) / (rect.width / 2),
+                    (t.clientY - rect.top - rect.height / 2) / (rect.height / 2),
+                  );
+                }}
+                onTouchMove={(e) => {
+                  e.preventDefault();
+                  const t = e.touches[0];
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  handleVirtualMove(
+                    Math.max(-1, Math.min(1, (t.clientX - rect.left - rect.width / 2) / (rect.width / 2))),
+                    Math.max(-1, Math.min(1, (t.clientY - rect.top - rect.height / 2) / (rect.height / 2))),
+                  );
+                }}
+                onTouchEnd={() => handleVirtualMove(0, 0)}
+              />
+              <button
+                type="button"
+                className="pointer-events-auto absolute bottom-6 right-6 h-16 w-16 rounded-full border border-violet-400/40 bg-violet-500/20 text-xs text-violet-200"
+                onTouchStart={() => handleVirtualFire(true)}
+                onTouchEnd={() => handleVirtualFire(false)}
+              >
+                FIRE
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="pointer-events-auto absolute bottom-8 right-8 h-20 w-20 rounded-full border border-[#65E8FF]/40 bg-[#7C5CFF]/25 text-xs font-semibold text-[#F5F7FF]"
+              onTouchStart={() => handleVirtualFire(true)}
+              onTouchEnd={() => handleVirtualFire(false)}
+            >
+              JUMP
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -38,8 +38,8 @@ export const GAME_CATALOG: Game[] = [
     slug: "void-runner",
     title: "Void Runner",
     description:
-      "Sprint through an endless cyber void. Jump obstacles, collect coins, and push your high score as speed ramps up.",
-    short_description: "Endless runner through the cyber void.",
+      "One-button auto-run rhythm platformer. Master Cube jumps and Ship flight through VOID SIGNAL — music-timed hazards, form portals, and precision restarts.",
+    short_description: "Music-driven one-button rhythm auto-runner.",
     genre: "arcade",
     thumbnail_url: "/games/void-runner.svg",
     banner_url: "/games/void-runner-banner.svg",

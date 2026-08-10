@@ -51,6 +51,15 @@ export class InputManager {
     const onPointerUp = () => {
       this.primaryDown = false;
     };
+    const onVirtualFire = (e: Event) => {
+      const detail = (e as CustomEvent<{ down?: boolean }>).detail;
+      if (detail?.down) {
+        this.primaryDown = true;
+        this.bufferTimer = this.bufferSeconds;
+      } else {
+        this.primaryDown = false;
+      }
+    };
 
     target.addEventListener("keydown", onKeyDown as EventListener);
     target.addEventListener("keyup", onKeyUp as EventListener);
@@ -58,6 +67,7 @@ export class InputManager {
       target.addEventListener("pointerdown", onPointerDown);
       target.addEventListener("pointerup", onPointerUp);
       target.addEventListener("pointerleave", onPointerUp);
+      target.addEventListener("virtual-fire", onVirtualFire as EventListener);
     } else {
       window.addEventListener("pointerdown", onPointerDown);
       window.addEventListener("pointerup", onPointerUp);
@@ -69,6 +79,7 @@ export class InputManager {
       target.removeEventListener("pointerdown", onPointerDown);
       target.removeEventListener("pointerup", onPointerUp);
       target.removeEventListener("pointerleave", onPointerUp);
+      target.removeEventListener("virtual-fire", onVirtualFire as EventListener);
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointerup", onPointerUp);
     });

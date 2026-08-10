@@ -20,6 +20,14 @@ export interface GameHudStats {
   distance?: number;
   health?: number;
   time?: number;
+  /** 0–100 run progress (rhythm runners) */
+  progress?: number;
+  /** Best progress percent */
+  best?: number;
+  /** Attempt counter */
+  attempt?: number;
+  /** Active player form id (CUBE, SHIP, …) */
+  form?: string;
 }
 
 export interface GameEndResult {
