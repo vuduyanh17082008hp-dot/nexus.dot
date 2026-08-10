@@ -44,7 +44,6 @@ export class PlayScene extends Phaser.Scene {
   private startedAt = 0;
   private deadTimer = 0;
   private paused = false;
-  private restartQueued = false;
 
   constructor() {
     super(SCENE.PLAY);
@@ -154,7 +153,6 @@ export class PlayScene extends Phaser.Scene {
     this.collected.clear();
     this.flippedPortals.clear();
     this.deadTimer = 0;
-    this.restartQueued = false;
     this.overlayText.setVisible(false);
     this.playerSprite.setVisible(true).setAlpha(1);
 
@@ -181,14 +179,18 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.paused) return;
     const frameDt = delta / 1000;
     const input = this.inputMgr.beginFrame(frameDt);
 
+    if (this.paused) {
+      if (input.pausePressed || input.primaryPressed) {
+        this.requestResume();
+      }
+      return;
+    }
+
     if (input.pausePressed) {
-      this.paused = true;
-      this.bus.emit("game:pause", true);
-      this.overlayText.setText("PAUSED\nPRIMARY / Esc to resume").setVisible(true);
+      this.requestPause();
       return;
     }
 
