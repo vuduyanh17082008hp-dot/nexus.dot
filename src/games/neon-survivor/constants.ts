@@ -17,7 +17,7 @@ export interface NeonRegistry {
   restart: () => void;
 }
 
-export const PLAYER_SPEED = 220;
+export const PLAYER_SPEED = 280;
 export const BULLET_SPEED = 520;
 export const ENEMY_BASE_SPEED = 80;
 export const FIRE_RATE = 180;

@@ -225,8 +225,19 @@ export function GamePlayer({ game }: GamePlayerProps) {
     setGameOver(null);
     setSessionResult(null);
     setPaused(false);
+    setHud({ score: 0, wave: 1, highScore: getLocalHighScore(game.slug) || undefined });
     startTimeRef.current = Date.now();
-  }, []);
+  }, [game.slug]);
+
+  const handleReady = useCallback(() => {
+    bridgeRef.current?.onVolume(volume, volume * 0.85, volume);
+    setHud((prev) => ({
+      ...prev,
+      score: prev.score ?? 0,
+      wave: prev.wave ?? 1,
+      highScore: getLocalHighScore(game.slug) || prev.highScore,
+    }));
+  }, [volume, game.slug]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -337,18 +348,22 @@ export function GamePlayer({ game }: GamePlayerProps) {
             showMobileControls
             onGameOver={handleGameOver}
             onHudUpdate={setHud}
-            onReady={() => {
-              bridgeRef.current?.onVolume(volume, volume * 0.85, volume);
-            }}
+            onReady={handleReady}
           />
 
           {paused && !gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/70 backdrop-blur-sm">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-black/70 backdrop-blur-sm">
               <Pause className="mb-4 h-12 w-12 text-violet-400" />
-              <p className="text-lg font-semibold text-white">Paused</p>
-              <Button className="mt-4" onClick={togglePause}>
-                Resume
-              </Button>
+              <p className="text-lg font-semibold text-white">PAUSED</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <Button onClick={togglePause}>Resume</Button>
+                <Button variant="secondary" onClick={handleRestart}>
+                  Restart
+                </Button>
+                <Button href={`/games/${game.slug}`} variant="ghost">
+                  Exit
+                </Button>
+              </div>
             </div>
           )}
 

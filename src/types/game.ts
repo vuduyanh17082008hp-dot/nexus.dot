@@ -38,6 +38,10 @@ export type GameEventMap = {
   "achievement:unlock": { slug: string; name: string };
   "score:popup": { value: number; x: number; y: number };
   "audio:unlock": void;
+  "nexus:game-started": void;
+  "nexus:pause": void;
+  "nexus:resume": void;
+  "nexus:error": { message: string };
 };
 
 export interface NexusGameBridge {

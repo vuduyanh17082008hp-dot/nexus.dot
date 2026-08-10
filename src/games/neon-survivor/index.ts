@@ -18,66 +18,99 @@ export function bootNeonSurvivor(
   options: { onLoadProgress?: (pct: number) => void; graphicsPreset?: PerformancePreset } = {},
 ): NexusGameBridge {
   let game: Phaser.Game | null = null;
+  let cancelled = false;
+  let booting = false;
   const audio = new GameAudio();
   const saveMgr = new SaveManager(GAME_SLUG);
   const achievements = new AchievementManager(GAME_SLUG, bus);
   let graphics = getGraphicsPreset(options.graphicsPreset ?? "medium");
-  let booted = false;
 
   const boot = async () => {
-    if (booted) return;
-    booted = true;
-    const Phaser = await import("phaser");
-    const ctx = {
-      bus,
-      gameSlug: GAME_SLUG,
-      width: 960,
-      height: 540,
-      graphics,
-      onLoadProgress: options.onLoadProgress,
-    };
+    if (booting || game || cancelled) return;
+    booting = true;
 
-    game = await createPhaserGame(Phaser, {
-      parent,
-      width: 960,
-      height: 540,
-      scenes: [BootScene, MenuScene, GameScene, UIScene],
-      backgroundColor: "#0a0014",
-    });
+    try {
+      const PhaserMod = await import("phaser");
+      if (cancelled) return;
 
-    game.registry.set("bus", bus);
-    game.registry.set("ctx", ctx);
-    game.registry.set("audio", audio);
-    game.registry.set("saveMgr", saveMgr);
-    game.registry.set("achievements", achievements);
-    game.registry.set("graphics", graphics);
-    game.registry.set("restart", () => bridge.onRestart());
+      const ctx = {
+        bus,
+        gameSlug: GAME_SLUG,
+        width: 960,
+        height: 540,
+        graphics,
+        onLoadProgress: options.onLoadProgress,
+      };
 
-    parent.addEventListener(
-      "pointerdown",
-      () => {
-        void audio.unlock();
-        bus.emit("audio:unlock", undefined);
-      },
-      { once: true },
-    );
+      const instance = await createPhaserGame(PhaserMod, {
+        parent,
+        width: 960,
+        height: 540,
+        scenes: [BootScene, MenuScene, GameScene, UIScene],
+        backgroundColor: "#0a0014",
+      });
+
+      if (cancelled) {
+        destroyPhaserGame(instance, parent);
+        return;
+      }
+
+      game = instance;
+      game.registry.set("bus", bus);
+      game.registry.set("ctx", ctx);
+      game.registry.set("audio", audio);
+      game.registry.set("saveMgr", saveMgr);
+      game.registry.set("achievements", achievements);
+      game.registry.set("graphics", graphics);
+      game.registry.set("restart", () => bridge.onRestart());
+
+      parent.addEventListener(
+        "pointerdown",
+        () => {
+          void audio.unlock();
+          bus.emit("audio:unlock", undefined);
+        },
+        { once: true },
+      );
+
+      if (process.env.NODE_ENV === "development") {
+        console.info("[NeonSurvivor] Phaser game mounted");
+      }
+    } catch (err) {
+      console.error("[NeonSurvivor] Failed to boot", err);
+      bus.emit("nexus:error", {
+        message: err instanceof Error ? err.message : "Failed to start Neon Survivor",
+      });
+      throw err;
+    } finally {
+      booting = false;
+    }
   };
 
   void boot();
 
   const bridge: NexusGameBridge = {
     onPause: () => {
-      game?.scene.pause(SCENE.GAME);
+      if (!game || cancelled) return;
+      if (game.scene.isActive(SCENE.GAME)) game.scene.pause(SCENE.GAME);
       bus.emit("game:pause", true);
+      bus.emit("nexus:pause", undefined);
     },
     onResume: () => {
-      game?.scene.resume(SCENE.GAME);
+      if (!game || cancelled) return;
+      if (game.scene.isPaused(SCENE.GAME)) game.scene.resume(SCENE.GAME);
       bus.emit("game:pause", false);
+      bus.emit("nexus:resume", undefined);
     },
     onRestart: () => {
-      game?.scene.stop(SCENE.UI);
-      game?.scene.stop(SCENE.GAME);
-      game?.scene.start(SCENE.MENU);
+      if (!game || cancelled) return;
+      if (game.scene.isActive(SCENE.UI) || game.scene.isPaused(SCENE.UI)) {
+        game.scene.stop(SCENE.UI);
+      }
+      if (game.scene.isActive(SCENE.GAME) || game.scene.isPaused(SCENE.GAME)) {
+        game.scene.stop(SCENE.GAME);
+      }
+      game.scene.start(SCENE.MENU);
     },
     onMute: (m: boolean) => audio.setMuted(m),
     onVolume: (master, music, sfx) => audio.setVolumes(master, music, sfx),
@@ -86,9 +119,10 @@ export function bootNeonSurvivor(
       game?.registry.set("graphics", settings);
     },
     destroy: () => {
+      cancelled = true;
       destroyPhaserGame(game, parent);
       game = null;
-      booted = false;
+      booting = false;
     },
   };
 

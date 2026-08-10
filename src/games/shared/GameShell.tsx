@@ -64,6 +64,9 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
   const bridgeRef = useRef<NexusGameBridge | null>(null);
   const busRef = useRef<EventBus | null>(null);
   const onErrorRef = useRef(onError);
+  const onGameOverRef = useRef(onGameOver);
+  const onHudUpdateRef = useRef(onHudUpdate);
+  const onReadyRef = useRef(onReady);
   const [loading, setLoading] = useState(true);
   const [loadPct, setLoadPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,12 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
+
+  useEffect(() => {
+    onGameOverRef.current = onGameOver;
+    onHudUpdateRef.current = onHudUpdate;
+    onReadyRef.current = onReady;
+  }, [onGameOver, onHudUpdate, onReady]);
 
   const reportError = useCallback((err: Error) => {
     setError(err.message);
@@ -153,10 +162,10 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
 
         bus.on("game:ready", () => {
           setLoading(false);
-          onReady?.();
+          onReadyRef.current?.();
         });
-        bus.on("hud:update", (stats) => onHudUpdate?.(stats));
-        bus.on("game:over", (result) => onGameOver?.(result));
+        bus.on("hud:update", (stats) => onHudUpdateRef.current?.(stats));
+        bus.on("game:over", (result) => onGameOverRef.current?.(result));
       })
       .catch((err: unknown) => {
         reportError(err instanceof Error ? err : new Error("Failed to load game"));
@@ -172,7 +181,8 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
       bus.clear();
       busRef.current = null;
     };
-  }, [gameSlug, graphicsPreset, onGameOver, onHudUpdate, onReady, reportError]);
+    // Callbacks are read via refs — do not remount Phaser when parent re-renders
+  }, [gameSlug, graphicsPreset, reportError]);
 
   return (
     <div className={cn("relative aspect-video w-full overflow-hidden rounded-xl bg-black", className)}>

@@ -2,7 +2,14 @@ import Phaser from "phaser";
 import type { EventBus } from "@/games/shared/event-bus";
 import { SCENE } from "./constants";
 
+/**
+ * READY screen. Starts NeonGame and lets GameScene own UI launch.
+ * Important: do NOT call scene.launch() after scene.start() — start() shuts
+ * this scene down and queued launches from here are unreliable.
+ */
 export class MenuScene extends Phaser.Scene {
+  private started = false;
+
   constructor() {
     super({ key: SCENE.MENU });
   }
@@ -10,6 +17,7 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     const bus = this.registry.get("bus") as EventBus;
+    this.started = false;
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0a0014);
     const grid = this.add.graphics();
@@ -44,12 +52,34 @@ export class MenuScene extends Phaser.Scene {
 
     startBtn.on("pointerover", () => startBtn.setColor("#00ffff"));
     startBtn.on("pointerout", () => startBtn.setColor("#ff44aa"));
-    startBtn.on("pointerdown", () => {
-      bus.emit("audio:unlock", undefined);
-      this.scene.start(SCENE.GAME);
-      this.scene.launch(SCENE.UI);
-    });
+
+    const begin = () => this.beginGame(bus);
+
+    // Anywhere on the canvas starts the game (not only the label)
+    this.input.once("pointerdown", begin);
+    startBtn.once("pointerdown", begin);
+
+    const space = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    space?.once("down", begin);
+
+    if (process.env.NODE_ENV === "development") {
+      console.info("[NeonSurvivor] READY");
+    }
 
     bus.emit("game:ready", undefined);
+  }
+
+  private beginGame(bus: EventBus): void {
+    if (this.started) return;
+    this.started = true;
+
+    bus.emit("audio:unlock", undefined);
+
+    if (process.env.NODE_ENV === "development") {
+      console.info("[NeonSurvivor] START → PLAYING");
+    }
+
+    // Only start GAME here. GameScene.create() launches UI.
+    this.scene.start(SCENE.GAME);
   }
 }
