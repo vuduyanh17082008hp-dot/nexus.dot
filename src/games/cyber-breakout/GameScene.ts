@@ -10,6 +10,7 @@ import { calculateSessionXP } from "@/lib/xp/curve";
 import { BALL_SPEED, MAX_LIVES, PADDLE_SPEED, SCENE } from "./constants";
 import { LEVELS, brickColor, brickHp, brickPoints } from "./levels";
 import { spawnParticles, screenShake } from "./effects";
+import { VictoryOverlay } from "@/games/shared/victory-overlay";
 
 interface BrickObj extends Phaser.Physics.Arcade.Sprite {
   hp: number;
@@ -40,6 +41,10 @@ export class GameScene extends Phaser.Scene {
   private paddleWide = false;
   private gameOver = false;
   private won = false;
+  private completionLocked = false;
+  private roundHold = false;
+  private victoryOverlay: VictoryOverlay | null = null;
+  private roundStartedAt = 0;
 
   constructor() {
     super({ key: SCENE.GAME });
@@ -96,18 +101,33 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.pauseMgr = new PauseManager(this, this.bus);
-    this.input.keyboard?.on("keydown-ESC", () => this.pauseMgr.toggle());
+    this.input.keyboard?.on("keydown-ESC", () => {
+      if (this.roundHold || this.won || this.gameOver) return;
+      this.pauseMgr.toggle();
+    });
     this.input.keyboard?.on("keydown-R", () => {
+      if (this.roundHold) return;
       if (this.gameOver || this.won) this.registry.get("restart")();
     });
-    this.input.keyboard?.on("keydown-SPACE", () => this.launchBall());
-    this.input.on("pointerdown", () => this.launchBall());
+    this.input.keyboard?.on("keydown-SPACE", () => {
+      if (this.roundHold) return;
+      this.launchBall();
+    });
+    this.input.on("pointerdown", () => {
+      if (this.roundHold) return;
+      this.launchBall();
+    });
 
+    this.roundStartedAt = performance.now();
     this.emitHud();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.victoryOverlay?.destroy();
+      this.victoryOverlay = null;
+    });
   }
 
   update(): void {
-    if (this.gameOver || this.won || this.pauseMgr.isPaused()) return;
+    if (this.gameOver || this.won || this.roundHold || this.pauseMgr.isPaused()) return;
 
     const pointer = this.input.activePointer;
     const kb = this.input.keyboard;
@@ -219,6 +239,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private loseLife(): void {
+    if (this.gameOver || this.won || this.roundHold) return;
     this.lives -= 1;
     this.ballLaunched = false;
     this.ball.setVelocity(0, 0);
@@ -231,18 +252,72 @@ export class GameScene extends Phaser.Scene {
   }
 
   private nextLevel(): void {
-    this.levelIndex += 1;
-    this.registry.set("levelIndex", this.levelIndex);
-    if (this.levelIndex >= LEVELS.length) {
+    if (this.completionLocked || this.roundHold) return;
+    this.completionLocked = true;
+    this.roundHold = true;
+    this.ballLaunched = false;
+    this.ball.setVelocity(0, 0);
+
+    const score = this.scoreMgr.getScore();
+    const time = Math.floor((performance.now() - this.roundStartedAt) / 1000);
+    const clearedRound = this.levelIndex + 1;
+    const isFinal = clearedRound >= LEVELS.length;
+
+    this.audio.playVictory();
+    this.bus.emit("round-complete", {
+      round: clearedRound,
+      score,
+      progress: Math.floor((clearedRound / LEVELS.length) * 100),
+      time,
+      final: isFinal,
+    });
+
+    if (isFinal) {
       this.endGame(true);
       return;
     }
-    this.ballLaunched = false;
-    this.ball.setVelocity(0, 0);
+
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = new VictoryOverlay(this, {
+      width: this.scale.width,
+      height: this.scale.height,
+      holdSeconds: 1.25,
+      isFinalRound: false,
+      particleKey: "particle",
+    });
+    this.victoryOverlay.begin({
+      onNext: () => this.advanceToNextRound(),
+      onReplay: () => this.replayCurrentRound(),
+      onMenu: () => this.bus.emit("game:exit", undefined),
+    });
+  }
+
+  private advanceToNextRound(): void {
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = null;
+    this.levelIndex += 1;
+    this.registry.set("levelIndex", this.levelIndex);
+    this.completionLocked = false;
+    this.roundHold = false;
+    this.roundStartedAt = performance.now();
     this.children.getByName("levelLabel")?.destroy();
     this.buildLevel(this.levelIndex);
-    this.audio.playVictory();
+    this.ball.setPosition(this.paddle.x, this.paddle.y - 24);
     this.emitHud();
+    this.bus.emit("game:restart", undefined);
+  }
+
+  private replayCurrentRound(): void {
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = null;
+    this.completionLocked = false;
+    this.roundHold = false;
+    this.roundStartedAt = performance.now();
+    this.children.getByName("levelLabel")?.destroy();
+    this.buildLevel(this.levelIndex);
+    this.ball.setPosition(this.paddle.x, this.paddle.y - 24);
+    this.emitHud();
+    this.bus.emit("game:restart", undefined);
   }
 
   private emitHud(): void {
@@ -256,8 +331,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private endGame(victory: boolean): void {
+    if (!victory && this.completionLocked) return;
     this.gameOver = !victory;
     this.won = victory;
+    this.roundHold = victory;
     const score = this.scoreMgr.getScore();
     const save = this.saveMgr.recordPlay(score, {
       level: victory ? LEVELS.length : this.levelIndex + 1,
@@ -288,15 +365,43 @@ export class GameScene extends Phaser.Scene {
         level: victory ? LEVELS.length : this.levelIndex + 1,
         blocksDestroyed: this.blocksDestroyed,
         victory,
+        round: victory ? LEVELS.length : this.levelIndex + 1,
       },
     });
 
-    const msg = victory ? "VICTORY!\nPress R for menu" : "GAME OVER\nPress R to retry";
+    if (victory) {
+      this.victoryOverlay?.destroy();
+      this.victoryOverlay = new VictoryOverlay(this, {
+        width: this.scale.width,
+        height: this.scale.height,
+        holdSeconds: 1.25,
+        isFinalRound: true,
+        particleKey: "particle",
+      });
+      this.victoryOverlay.begin({
+        onNext: () => {
+          this.victoryOverlay?.destroy();
+          this.victoryOverlay = null;
+          this.registry.get("restart")();
+          this.bus.emit("game:restart", undefined);
+        },
+        onReplay: () => {
+          this.victoryOverlay?.destroy();
+          this.victoryOverlay = null;
+          this.registry.get("restart")();
+          this.bus.emit("game:restart", undefined);
+        },
+        onMenu: () => this.bus.emit("game:exit", undefined),
+      });
+      return;
+    }
+
+    const msg = "GAME OVER\nPress R to retry";
     this.add
       .text(this.scale.width / 2, this.scale.height / 2, msg, {
         fontFamily: "monospace",
         fontSize: "28px",
-        color: victory ? "#00ffaa" : "#ff44aa",
+        color: "#ff44aa",
         align: "center",
       })
       .setOrigin(0.5)
