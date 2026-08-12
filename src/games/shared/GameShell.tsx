@@ -28,6 +28,8 @@ export interface GameShellProps {
   onHudUpdate?: (stats: GameHudStats) => void;
   onReady?: () => void;
   onError?: (error: Error) => void;
+  onExit?: () => void;
+  onSoftRestart?: () => void;
   showMobileControls?: boolean;
 }
 
@@ -56,6 +58,8 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
     onHudUpdate,
     onReady,
     onError,
+    onExit,
+    onSoftRestart,
     showMobileControls,
   },
   ref,
@@ -67,6 +71,8 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
   const onGameOverRef = useRef(onGameOver);
   const onHudUpdateRef = useRef(onHudUpdate);
   const onReadyRef = useRef(onReady);
+  const onExitRef = useRef(onExit);
+  const onSoftRestartRef = useRef(onSoftRestart);
   const [loading, setLoading] = useState(true);
   const [loadPct, setLoadPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +90,9 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
     onGameOverRef.current = onGameOver;
     onHudUpdateRef.current = onHudUpdate;
     onReadyRef.current = onReady;
-  }, [onGameOver, onHudUpdate, onReady]);
+    onExitRef.current = onExit;
+    onSoftRestartRef.current = onSoftRestart;
+  }, [onGameOver, onHudUpdate, onReady, onExit, onSoftRestart]);
 
   const reportError = useCallback((err: Error) => {
     setError(err.message);
@@ -166,6 +174,8 @@ export const GameShell = forwardRef<NexusGameBridge | null, GameShellProps>(func
         });
         bus.on("hud:update", (stats) => onHudUpdateRef.current?.(stats));
         bus.on("game:over", (result) => onGameOverRef.current?.(result));
+        bus.on("game:exit", () => onExitRef.current?.());
+        bus.on("game:restart", () => onSoftRestartRef.current?.());
         bus.on("nexus:error", (payload) => {
           reportError(new Error(payload.message));
         });

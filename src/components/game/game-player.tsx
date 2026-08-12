@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Heart,
@@ -54,9 +55,11 @@ interface SessionResponse {
 }
 
 export function GamePlayer({ game }: GamePlayerProps) {
+  const router = useRouter();
   const bridgeRef = useRef<NexusGameBridge | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const startTimeRef = useRef(0);
+  const sessionSubmittedRef = useRef(false);
 
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -145,6 +148,8 @@ export function GamePlayer({ game }: GamePlayerProps) {
 
   const submitSession = useCallback(
     async (result: GameEndResult) => {
+      if (sessionSubmittedRef.current) return;
+      sessionSubmittedRef.current = true;
       setSubmitting(true);
       const durationSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
       const numericMeta: Record<string, number> = {};
@@ -213,25 +218,38 @@ export function GamePlayer({ game }: GamePlayerProps) {
 
   const handleGameOver = useCallback(
     (result: GameEndResult) => {
-      setGameOver(result);
+      const isVictory = Boolean(result.metadata?.victory);
+      // In-game COMPLETED UX owns the canvas for victories — avoid covering WELL DONE BUDDY
+      if (!isVictory) {
+        setGameOver(result);
+      }
       setPaused(false);
       void submitSession(result);
     },
     [submitSession],
   );
 
-  const handleRestart = useCallback(() => {
-    bridgeRef.current?.onRestart();
+  const handleExitToMenu = useCallback(() => {
+    router.push(`/games/${game.slug}`);
+  }, [router, game.slug]);
+
+  const clearSessionGuard = useCallback(() => {
+    sessionSubmittedRef.current = false;
     setGameOver(null);
     setSessionResult(null);
     setPaused(false);
+    startTimeRef.current = Date.now();
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    clearSessionGuard();
+    bridgeRef.current?.onRestart();
     setHud(
       game.slug === "void-runner"
         ? { score: 0, progress: 0, best: getLocalHighScore(game.slug) || 0, attempt: 1, form: "CUBE" }
         : { score: 0, wave: 1, highScore: getLocalHighScore(game.slug) || undefined },
     );
-    startTimeRef.current = Date.now();
-  }, [game.slug]);
+  }, [game.slug, clearSessionGuard]);
 
   const handleReady = useCallback(() => {
     bridgeRef.current?.onVolume(volume, volume * 0.85, volume);
@@ -431,6 +449,8 @@ export function GamePlayer({ game }: GamePlayerProps) {
             onGameOver={handleGameOver}
             onHudUpdate={setHud}
             onReady={handleReady}
+            onExit={handleExitToMenu}
+            onSoftRestart={clearSessionGuard}
           />
 
           {paused && !gameOver && (

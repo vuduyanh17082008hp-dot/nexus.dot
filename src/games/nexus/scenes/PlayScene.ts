@@ -10,12 +10,15 @@ import { parseLevelData, type LevelData } from "../world/LevelSchema";
 import { objectToAabb, resolveCollisions, type Aabb } from "../world/CollisionSystem";
 import { SCENE } from "../constants";
 import bootSequenceLevel from "../levels/boot-sequence.json";
+import { VictoryOverlay } from "@/games/shared/victory-overlay";
 
 type VisualObj = {
   id: string;
   sprite: Phaser.GameObjects.Image;
   kind: string;
 };
+
+type NexusPlayState = "PLAYING" | "PAUSED" | "DEAD" | "COMPLETED";
 
 export class PlayScene extends Phaser.Scene {
   private bus!: EventBus;
@@ -43,7 +46,10 @@ export class PlayScene extends Phaser.Scene {
   private deaths = 0;
   private startedAt = 0;
   private deadTimer = 0;
-  private paused = false;
+  private state: NexusPlayState = "PLAYING";
+  private completionLocked = false;
+  private victoryOverlay: VictoryOverlay | null = null;
+  private round = 1;
 
   constructor() {
     super(SCENE.PLAY);
@@ -175,6 +181,8 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private cleanup(): void {
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = null;
     this.inputMgr?.destroy();
   }
 
@@ -182,30 +190,27 @@ export class PlayScene extends Phaser.Scene {
     const frameDt = delta / 1000;
     const input = this.inputMgr.beginFrame(frameDt);
 
-    if (this.paused) {
+    if (this.state === "COMPLETED") {
+      return;
+    }
+
+    if (this.state === "PAUSED") {
       if (input.pausePressed || input.primaryPressed) {
         this.requestResume();
       }
       return;
     }
 
-    if (input.pausePressed) {
+    if (input.pausePressed && this.state === "PLAYING") {
       this.requestPause();
       return;
     }
 
-    if (!this.player.body.alive) {
+    if (this.state === "DEAD" || !this.player.body.alive) {
       this.deadTimer += frameDt;
       if (input.restartPressed || input.primaryPressed || this.deadTimer > 0.85) {
         this.attempts += 1;
-        this.resetAttempt(false);
-      }
-      return;
-    }
-
-    if (this.player.body.finished) {
-      if (input.restartPressed) {
-        this.attempts += 1;
+        this.state = "PLAYING";
         this.resetAttempt(false);
       }
       return;
@@ -311,9 +316,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private die(): void {
-    if (!this.player.body.alive) return;
+    if (this.state === "COMPLETED" || this.completionLocked) return;
+    if (!this.player.body.alive || this.state === "DEAD") return;
     this.player.kill();
     this.deaths += 1;
+    this.state = "DEAD";
     this.audio.playDeath();
     this.cameras.main.shake(120, 0.01);
     this.playerSprite.setAlpha(0.3);
@@ -329,21 +336,30 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private complete(): void {
-    if (this.player.body.finished) return;
+    if (this.completionLocked || this.player.body.finished || this.state === "COMPLETED") return;
+    this.completionLocked = true;
     this.player.finish();
-    this.audio.playCollect();
-    this.cameras.main.flash(200, 124, 58, 237, false);
+    this.state = "COMPLETED";
+    this.overlayText.setVisible(false);
+
     const pct = 100;
     const duration = Math.floor((performance.now() - this.startedAt) / 1000);
     const score = Math.max(
       100,
       Math.floor(10_000 * (1 / Math.max(1, this.attempts)) + this.collected.size * 500),
     );
+    const isFinal = true;
 
-    this.overlayText
-      .setText(`BOOT COMPLETE\n${pct}%  ·  ${this.attempts} attempts\nCores ${this.collected.size}`)
-      .setColor("#22d3ee")
-      .setVisible(true);
+    this.audio.playVictory();
+    this.cameras.main.flash(200, 124, 58, 237, false);
+
+    this.bus.emit("round-complete", {
+      round: this.round,
+      score,
+      progress: pct,
+      time: duration,
+      final: isFinal,
+    });
 
     this.bus.emit("game:over", {
       score,
@@ -358,9 +374,38 @@ export class PlayScene extends Phaser.Scene {
         collectibles: this.collected.size,
         durationSeconds: duration,
         victory: 1,
+        round: this.round,
         levelId: this.level.metadata.id,
       },
     });
+
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = new VictoryOverlay(this, {
+      width: NEXUS_CONFIG.width,
+      height: NEXUS_CONFIG.height,
+      holdSeconds: 1.25,
+      isFinalRound: isFinal,
+      particleKey: "nx-core",
+    });
+    this.victoryOverlay.begin({
+      onNext: () => this.beginFreshRun(),
+      onReplay: () => this.beginFreshRun(),
+      onMenu: () => this.bus.emit("game:exit", undefined),
+    });
+  }
+
+  private beginFreshRun(): void {
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = null;
+    this.completionLocked = false;
+    this.round = 1;
+    this.attempts += 1;
+    this.deaths = 0;
+    this.startedAt = performance.now();
+    this.state = "PLAYING";
+    this.resetAttempt(false);
+    this.bus.emit("game:pause", false);
+    this.bus.emit("game:restart", undefined);
   }
 
   private progress(): number {
@@ -403,20 +448,19 @@ export class PlayScene extends Phaser.Scene {
 
   /** Called from bridge */
   requestRestart(): void {
-    this.paused = false;
-    this.bus.emit("game:pause", false);
-    this.attempts += 1;
-    this.resetAttempt(false);
+    this.beginFreshRun();
   }
 
   requestResume(): void {
-    this.paused = false;
+    if (this.state !== "PAUSED") return;
+    this.state = "PLAYING";
     this.overlayText.setVisible(false);
     this.bus.emit("game:pause", false);
   }
 
   requestPause(): void {
-    this.paused = true;
+    if (this.state !== "PLAYING") return;
+    this.state = "PAUSED";
     this.overlayText.setText("PAUSED\nPRIMARY / Esc to resume").setVisible(true);
     this.bus.emit("game:pause", true);
   }

@@ -38,6 +38,9 @@ export const VOID_CONFIG = {
   coyoteMs: 70,
   countdownSeconds: 1.2,
   deathRestartSeconds: 0.7,
+  /** Single official level = one round (CONTINUE on finish) */
+  totalRounds: 1,
+  victoryHoldSeconds: 1.25,
   camera: {
     lookahead: 200,
     lerp: 0.14,

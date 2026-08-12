@@ -13,6 +13,7 @@ import { PlayerController } from "./player/PlayerController";
 import { ensureVoidTextures, textureForForm } from "./textures";
 import voidSignalLevel from "./levels/void-signal.json";
 import { calculateSessionXP } from "@/lib/xp/curve";
+import { VictoryOverlay } from "@/games/shared/victory-overlay";
 
 type VisualObj = {
   id: string;
@@ -61,6 +62,9 @@ export class PlayScene extends Phaser.Scene {
   private lastForm: VoidFormId = "CUBE";
   private practiceMode = false;
   private beepCooldown = 0;
+  private round = 1;
+  private completionLocked = false;
+  private victoryOverlay: VictoryOverlay | null = null;
 
   constructor() {
     super({ key: SCENE.PLAY });
@@ -272,6 +276,8 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private cleanup(): void {
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = null;
     this.inputMgr?.destroy();
   }
 
@@ -322,13 +328,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (this.state === "COMPLETED") {
-      if (input.restartPressed || input.primaryPressed) {
-        this.attempts += 1;
-        this.activeCheckpoint = null;
-        this.state = "COUNTDOWN";
-        this.countdownTimer = VOID_CONFIG.countdownSeconds;
-        this.resetAttempt(false);
-      }
+      // VictoryOverlay owns ENTER / SPACE / R / ESC once options are shown
       return;
     }
 
@@ -451,6 +451,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private die(): void {
+    if (this.state === "COMPLETED" || this.completionLocked) return;
     if (!this.player.body.alive || this.state === "DEAD") return;
     this.player.kill();
     this.deaths += 1;
@@ -476,11 +477,12 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private complete(): void {
-    if (this.player.body.finished || this.state === "COMPLETED") return;
+    if (this.completionLocked || this.player.body.finished || this.state === "COMPLETED") return;
+    this.completionLocked = true;
     this.player.finish();
     this.state = "COMPLETED";
-    this.audio.playCollect();
-    this.cameras.main.flash(220, 124, 92, 255, false);
+    this.practiceMode = false;
+    this.overlayText.setVisible(false);
 
     const duration = Math.floor((performance.now() - this.startedAt) / 1000);
     const score = Math.max(
@@ -488,11 +490,14 @@ export class PlayScene extends Phaser.Scene {
       Math.floor(12_000 * (1 / Math.max(1, this.attempts)) + this.collected.size * 400),
     );
     this.bestProgress = 100;
+    const isFinal = this.round >= VOID_CONFIG.totalRounds;
+
     const save = this.saveMgr.recordPlay(score, {
       progress: 100,
       attempts: this.attempts,
       deaths: this.deaths,
       collectibles: this.collected.size,
+      round: this.round,
     });
     const achievementsUnlocked = this.achievements.checkAndUnlock({
       score,
@@ -507,10 +512,16 @@ export class PlayScene extends Phaser.Scene {
         isDailyFirst: false,
       }) + this.achievements.estimateXp(achievementsUnlocked);
 
-    this.overlayText
-      .setText(`SIGNAL LOCKED\n100%  ·  ${this.attempts} attempts\nGems ${this.collected.size}`)
-      .setColor("#65E8FF")
-      .setVisible(true);
+    this.audio.playVictory();
+    this.cameras.main.flash(180, 101, 232, 255, false);
+
+    this.bus.emit("round-complete", {
+      round: this.round,
+      score,
+      progress: 100,
+      time: duration,
+      final: isFinal,
+    });
 
     this.bus.emit("game:over", {
       score,
@@ -525,10 +536,52 @@ export class PlayScene extends Phaser.Scene {
         collectibles: this.collected.size,
         durationSeconds: duration,
         victory: 1,
+        round: this.round,
         levelId: this.level.metadata.id,
         form: this.player.formId,
       },
     });
+
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = new VictoryOverlay(this, {
+      width: VOID_CONFIG.width,
+      height: VOID_CONFIG.height,
+      holdSeconds: VOID_CONFIG.victoryHoldSeconds,
+      isFinalRound: isFinal,
+      particleKey: "vr-spark",
+    });
+    this.victoryOverlay.begin({
+      onNext: () => this.handleVictoryNext(isFinal),
+      onReplay: () => this.beginFreshRun(),
+      onMenu: () => this.bus.emit("game:exit", undefined),
+    });
+  }
+
+  private handleVictoryNext(isFinal: boolean): void {
+    if (isFinal) {
+      // Final round CONTINUE → soft restart (no page reload); shell keeps saved session
+      this.beginFreshRun();
+      return;
+    }
+    this.round += 1;
+    this.beginFreshRun(false);
+  }
+
+  private beginFreshRun(resetRound = true): void {
+    this.victoryOverlay?.destroy();
+    this.victoryOverlay = null;
+    this.completionLocked = false;
+    if (resetRound) this.round = 1;
+    this.practiceMode = false;
+    this.activeCheckpoint = null;
+    this.attempts += 1;
+    this.deaths = 0;
+    this.startedAt = performance.now();
+    this.state = "COUNTDOWN";
+    this.countdownTimer = VOID_CONFIG.countdownSeconds;
+    this.resetAttempt(false);
+    this.bus.emit("game:pause", false);
+    this.bus.emit("game:restart", undefined);
   }
 
   private progress(): number {
@@ -586,13 +639,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   requestRestart(): void {
-    this.practiceMode = false;
-    this.activeCheckpoint = null;
-    this.attempts += 1;
-    this.state = "COUNTDOWN";
-    this.countdownTimer = VOID_CONFIG.countdownSeconds;
-    this.resetAttempt(false);
-    this.bus.emit("game:pause", false);
+    this.beginFreshRun(true);
   }
 
   requestResume(): void {

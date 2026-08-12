@@ -38,11 +38,25 @@ export interface GameEndResult {
   metadata: Record<string, number | string | boolean>;
 }
 
+export interface RoundCompletePayload {
+  round: number;
+  score: number;
+  progress: number;
+  time: number;
+  /** True when this was the last round of the run */
+  final?: boolean;
+}
+
 export type GameEventMap = {
   "hud:update": GameHudStats;
   "game:over": GameEndResult;
+  "round-complete": RoundCompletePayload;
   "game:pause": boolean;
   "game:ready": void;
+  /** Soft restart inside Phaser (no page reload) — clears shell session guards */
+  "game:restart": void;
+  /** Player chose return-to-menu from an in-game victory / results screen */
+  "game:exit": void;
   "achievement:unlock": { slug: string; name: string };
   "score:popup": { value: number; x: number; y: number };
   "audio:unlock": void;
